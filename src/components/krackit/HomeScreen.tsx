@@ -63,6 +63,7 @@ export function HomeScreen({
             {exams.map((e) => (
               <button
                 key={e.id}
+                onClick={() => openExam(e)}
                 className={`flex w-40 shrink-0 flex-col gap-3 rounded-2xl border border-border bg-gradient-to-br ${e.accent} p-4 text-left transition-transform active:scale-95`}
               >
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-background/40 font-display text-sm font-bold text-foreground ring-1 ring-white/10">
