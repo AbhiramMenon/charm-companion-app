@@ -104,12 +104,12 @@ export function HomeScreen({
           <Megaphone className="h-4 w-4 text-gold" />
           <h2 className="text-lg font-bold text-foreground">Upcoming exam news</h2>
         </div>
-        <div className="overflow-x-auto px-5 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <div className="flex gap-3 snap-x snap-mandatory">
-            {examNews.map((n) => (
+        <div className="overflow-hidden px-5 pb-2">
+          <div className="flex w-max gap-3 animate-marquee">
+            {[...examNews, ...examNews].map((n, i) => (
               <article
-                key={n.id}
-                className={`w-72 shrink-0 snap-start rounded-2xl border border-border bg-gradient-to-br ${n.accent} p-4`}
+                key={`${n.id}-${i}`}
+                className={`w-72 shrink-0 rounded-2xl border border-border bg-gradient-to-br ${n.accent} p-4`}
               >
                 <div className="flex items-center justify-between">
                   <span className="rounded-full bg-background/60 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-gold ring-1 ring-gold/30">
