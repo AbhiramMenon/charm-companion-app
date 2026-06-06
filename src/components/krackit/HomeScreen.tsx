@@ -1,16 +1,18 @@
 import { Bell, Flame, Sparkles } from "lucide-react";
 import logo from "@/assets/krackit-logo.png";
-import { exams, tricks, type Trick } from "@/lib/krackit-data";
+import { exams, tricks, type Exam, type Trick } from "@/lib/krackit-data";
 import { TrickCard } from "./TrickCard";
 
 export function HomeScreen({
   saved,
   toggleSave,
   openTrick,
+  openExam,
 }: {
   saved: Set<string>;
   toggleSave: (id: string) => void;
   openTrick: (t: Trick) => void;
+  openExam: (e: Exam) => void;
 }) {
   return (
     <div className="flex-1 overflow-y-auto pb-6">
