@@ -44,6 +44,23 @@ export const exams: Exam[] = [
   { id: "bank", name: "Banking", short: "IBPS", description: "PO, Clerk & RRB", subjects: 6, tricks: 380, accent: "from-cyan-400/30 to-cyan-700/10" },
 ];
 
+export type ExamNews = {
+  id: string;
+  exam: string;
+  title: string;
+  date: string;
+  tag: "Notification" | "Admit Card" | "Result" | "Exam Date";
+  accent: string;
+};
+
+export const examNews: ExamNews[] = [
+  { id: "n1", exam: "UPSC", title: "CSE Prelims 2026 notification released", date: "Feb 14", tag: "Notification", accent: "from-amber-500/30 to-amber-900/10" },
+  { id: "n2", exam: "NEET", title: "NEET UG admit cards out next week", date: "Apr 28", tag: "Admit Card", accent: "from-emerald-500/30 to-emerald-900/10" },
+  { id: "n3", exam: "SSC", title: "CGL Tier 1 exam dates announced", date: "Jun 09", tag: "Exam Date", accent: "from-rose-500/30 to-rose-900/10" },
+  { id: "n4", exam: "JEE", title: "JEE Main Session 2 results declared", date: "May 02", tag: "Result", accent: "from-sky-500/30 to-sky-900/10" },
+  { id: "n5", exam: "IBPS", title: "PO 2026 prelims notification live", date: "Jul 18", tag: "Notification", accent: "from-cyan-500/30 to-cyan-900/10" },
+];
+
 export const subjects: Subject[] = [
   { id: "history", name: "History", icon: "📜", chapters: 14, examId: "upsc", color: "from-amber-500/25 to-amber-900/5" },
   { id: "polity", name: "Polity", icon: "⚖️", chapters: 22, examId: "upsc", color: "from-rose-500/25 to-rose-900/5" },

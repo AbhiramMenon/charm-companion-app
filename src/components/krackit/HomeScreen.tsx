@@ -1,6 +1,6 @@
-import { Bell, Flame, Sparkles } from "lucide-react";
+import { Bell, Flame, Megaphone, Sparkles } from "lucide-react";
 import logo from "@/assets/krackit-logo.png";
-import { exams, tricks, type Exam, type Trick } from "@/lib/krackit-data";
+import { examNews, exams, tricks, type Exam, type Trick } from "@/lib/krackit-data";
 import { TrickCard } from "./TrickCard";
 
 export function HomeScreen({
@@ -95,6 +95,33 @@ export function HomeScreen({
               onOpen={() => openTrick(t)}
             />
           ))}
+        </div>
+      </section>
+
+      {/* Upcoming exam news carousel */}
+      <section className="mt-8">
+        <div className="mb-3 flex items-center gap-2 px-5">
+          <Megaphone className="h-4 w-4 text-gold" />
+          <h2 className="text-lg font-bold text-foreground">Upcoming exam news</h2>
+        </div>
+        <div className="overflow-x-auto px-5 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex gap-3 snap-x snap-mandatory">
+            {examNews.map((n) => (
+              <article
+                key={n.id}
+                className={`w-72 shrink-0 snap-start rounded-2xl border border-border bg-gradient-to-br ${n.accent} p-4`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="rounded-full bg-background/60 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-gold ring-1 ring-gold/30">
+                    {n.exam}
+                  </span>
+                  <span className="text-[11px] text-muted-foreground">{n.date}</span>
+                </div>
+                <p className="mt-3 text-sm font-semibold leading-snug text-foreground">{n.title}</p>
+                <p className="mt-2 text-[11px] uppercase tracking-wider text-muted-foreground">{n.tag}</p>
+              </article>
+            ))}
+          </div>
         </div>
       </section>
     </div>
