@@ -1,6 +1,6 @@
-import { Bell, Flame, Sparkles } from "lucide-react";
+import { Bell, Flame, Megaphone, Sparkles } from "lucide-react";
 import logo from "@/assets/krackit-logo.png";
-import { exams, tricks, type Exam, type Trick } from "@/lib/krackit-data";
+import { examNews, exams, tricks, type Exam, type Trick } from "@/lib/krackit-data";
 import { TrickCard } from "./TrickCard";
 
 export function HomeScreen({
