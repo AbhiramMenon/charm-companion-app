@@ -40,20 +40,8 @@ export function BookmarksScreen({
     g.chapters.get(chapterKey)!.items.push(t);
   }
 
-  const [expandedSubjects, setExpandedSubjects] = useState<Set<string>>(
-    () => new Set(Array.from(groups.keys()))
-  );
-  const [expandedChapters, setExpandedChapters] = useState<Set<string>>(
-    () => {
-      const init = new Set<string>();
-      for (const [subjectKey, g] of groups) {
-        for (const chapterKey of g.chapters.keys()) {
-          init.add(`${subjectKey}:${chapterKey}`);
-        }
-      }
-      return init;
-    }
-  );
+  const [expandedSubjects, setExpandedSubjects] = useState<Set<string>>(new Set());
+  const [expandedChapters, setExpandedChapters] = useState<Set<string>>(new Set());
 
   const toggleSubject = (key: string) => {
     setExpandedSubjects((prev) => {
