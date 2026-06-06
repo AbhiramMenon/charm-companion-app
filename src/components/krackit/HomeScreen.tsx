@@ -1,16 +1,18 @@
 import { Bell, Flame, Sparkles } from "lucide-react";
 import logo from "@/assets/krackit-logo.png";
-import { exams, tricks, type Trick } from "@/lib/krackit-data";
+import { exams, tricks, type Exam, type Trick } from "@/lib/krackit-data";
 import { TrickCard } from "./TrickCard";
 
 export function HomeScreen({
   saved,
   toggleSave,
   openTrick,
+  openExam,
 }: {
   saved: Set<string>;
   toggleSave: (id: string) => void;
   openTrick: (t: Trick) => void;
+  openExam: (e: Exam) => void;
 }) {
   return (
     <div className="flex-1 overflow-y-auto pb-6">
@@ -61,6 +63,7 @@ export function HomeScreen({
             {exams.map((e) => (
               <button
                 key={e.id}
+                onClick={() => openExam(e)}
                 className={`flex w-40 shrink-0 flex-col gap-3 rounded-2xl border border-border bg-gradient-to-br ${e.accent} p-4 text-left transition-transform active:scale-95`}
               >
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-background/40 font-display text-sm font-bold text-foreground ring-1 ring-white/10">

@@ -8,7 +8,10 @@ import { SearchScreen } from "@/components/krackit/SearchScreen";
 import { BookmarksScreen } from "@/components/krackit/BookmarksScreen";
 import { ProfileScreen } from "@/components/krackit/ProfileScreen";
 import { TrickDetail } from "@/components/krackit/TrickDetail";
-import type { Trick } from "@/lib/krackit-data";
+import { SubjectsScreen } from "@/components/krackit/SubjectsScreen";
+import { ChaptersScreen } from "@/components/krackit/ChaptersScreen";
+import { TricksScreen } from "@/components/krackit/TricksScreen";
+import type { Chapter, Exam, Subject, Trick } from "@/lib/krackit-data";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -35,6 +38,9 @@ function KrackItApp() {
   const [tab, setTab] = useState<Tab>("home");
   const [saved, setSaved] = useState<Set<string>>(new Set(["t2"]));
   const [openedTrick, setOpenedTrick] = useState<Trick | null>(null);
+  const [exam, setExam] = useState<Exam | null>(null);
+  const [subject, setSubject] = useState<Subject | null>(null);
+  const [chapter, setChapter] = useState<Chapter | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setBooting(false), 1600);
@@ -49,6 +55,43 @@ function KrackItApp() {
       return next;
     });
 
+  // Reset drill-down when switching tabs
+  const changeTab = (t: Tab) => {
+    setExam(null);
+    setSubject(null);
+    setChapter(null);
+    setOpenedTrick(null);
+    setTab(t);
+  };
+
+  const renderTab = () => {
+    if (tab === "home") {
+      if (chapter) {
+        return (
+          <TricksScreen
+            chapter={chapter}
+            saved={saved}
+            toggleSave={toggleSave}
+            openTrick={setOpenedTrick}
+            onBack={() => setChapter(null)}
+          />
+        );
+      }
+      if (subject) {
+        return <ChaptersScreen subject={subject} onBack={() => setSubject(null)} onSelect={setChapter} />;
+      }
+      if (exam) {
+        return <SubjectsScreen exam={exam} onBack={() => setExam(null)} onSelect={setSubject} />;
+      }
+      return (
+        <HomeScreen saved={saved} toggleSave={toggleSave} openTrick={setOpenedTrick} openExam={setExam} />
+      );
+    }
+    if (tab === "search") return <SearchScreen saved={saved} toggleSave={toggleSave} openTrick={setOpenedTrick} />;
+    if (tab === "bookmarks") return <BookmarksScreen saved={saved} toggleSave={toggleSave} openTrick={setOpenedTrick} />;
+    return <ProfileScreen />;
+  };
+
   return (
     <PhoneFrame>
       {booting ? (
@@ -62,11 +105,8 @@ function KrackItApp() {
         />
       ) : (
         <>
-          {tab === "home" && <HomeScreen saved={saved} toggleSave={toggleSave} openTrick={setOpenedTrick} />}
-          {tab === "search" && <SearchScreen saved={saved} toggleSave={toggleSave} openTrick={setOpenedTrick} />}
-          {tab === "bookmarks" && <BookmarksScreen saved={saved} toggleSave={toggleSave} openTrick={setOpenedTrick} />}
-          {tab === "profile" && <ProfileScreen />}
-          <BottomNav active={tab} onChange={setTab} />
+          {renderTab()}
+          <BottomNav active={tab} onChange={changeTab} />
         </>
       )}
     </PhoneFrame>
