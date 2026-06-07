@@ -237,21 +237,19 @@ export function HomeScreen({
 
           <button
             onClick={() => openTrick(trickOfDay, todList)}
-            className="group relative w-full overflow-hidden rounded-3xl text-left shadow-xl transition-transform active:scale-[0.98]"
+            className="group relative w-full overflow-hidden rounded-2xl text-left shadow-lg transition-transform active:scale-[0.98]"
             style={{ background: "linear-gradient(135deg, #1a130a 0%, #2a1d0a 40%, #1e1508 100%)" }}
           >
-            {/* Glow orbs */}
-            <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full opacity-30"
+            {/* Glow orb */}
+            <div className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full opacity-25"
               style={{ background: "radial-gradient(circle, #D4A24C 0%, transparent 70%)" }} />
-            <div className="pointer-events-none absolute -bottom-8 -left-8 h-32 w-32 rounded-full opacity-20"
-              style={{ background: "radial-gradient(circle, #F2D58A 0%, transparent 70%)" }} />
 
-            <div className="relative p-5">
+            <div className="relative p-3.5">
               {/* Top row: badge + subject */}
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-1.5">
                   <span className={cn(
-                    "flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider",
+                    "flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider",
                     trickOfDay.difficulty === "Easy"   ? "bg-emerald-400/20 text-emerald-400" :
                     trickOfDay.difficulty === "Medium" ? "bg-amber-400/20 text-amber-400"    :
                                                          "bg-rose-400/20 text-rose-400"
@@ -260,30 +258,29 @@ export function HomeScreen({
                     {trickOfDay.difficulty}
                   </span>
                   {trickOfDay.subject && (
-                    <span className="rounded-full bg-white/8 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-white/60">
+                    <span className="rounded-full bg-white/8 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-white/60">
                       {trickOfDay.subject}
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-1 rounded-full bg-gold/15 px-2.5 py-1">
-                  <Sparkles className="h-3 w-3 text-gold" />
-                  <span className="text-[10px] font-bold text-gold">Daily</span>
-                </div>
+                <span className="flex items-center gap-1 rounded-full bg-gold/15 px-2 py-0.5 text-[9px] font-bold text-gold">
+                  <Sparkles className="h-2.5 w-2.5" /> Daily
+                </span>
               </div>
 
               {/* Title */}
-              <h3 className="text-base font-bold leading-snug text-white mb-4">{trickOfDay.title}</h3>
+              <h3 className="text-sm font-bold leading-snug text-white mb-2 line-clamp-1">{trickOfDay.title}</h3>
 
-              {/* Mnemonic box — the hero element */}
-              <div className="relative mb-4 rounded-2xl border border-gold/25 px-5 py-4"
+              {/* Mnemonic box */}
+              <div className="relative mb-2 rounded-xl border border-gold/25 px-3 py-2"
                 style={{ background: "linear-gradient(135deg, rgba(212,162,76,0.18) 0%, rgba(212,162,76,0.06) 100%)" }}>
-                <p className="text-center font-display text-2xl font-black tracking-[0.15em] text-gold drop-shadow-sm">
+                <p className="text-center font-display text-base font-black tracking-[0.12em] text-gold">
                   {trickOfDay.content}
                 </p>
               </div>
 
               {/* Explanation preview */}
-              <p className="text-sm leading-relaxed text-white/65 line-clamp-2 mb-4">
+              <p className="text-[11px] leading-snug text-white/60 line-clamp-1 mb-2">
                 {trickOfDay.explanation}
               </p>
 
@@ -292,20 +289,17 @@ export function HomeScreen({
                 <div className="flex gap-1">
                   {todList.length > 1 ? (
                     todList.map((_, i) => (
-                      <div key={i} className="h-1.5 w-5 rounded-full" style={{ background: i === clampedIdx ? "linear-gradient(90deg,#F2D58A,#D4A24C)" : "rgba(255,255,255,0.12)" }} />
+                      <div key={i} className="h-1 w-3 rounded-full" style={{ background: i === clampedIdx ? "linear-gradient(90deg,#F2D58A,#D4A24C)" : "rgba(255,255,255,0.12)" }} />
                     ))
-                  ) : (
-                    [1,2,3,4,5].map((i) => (
-                      <div key={i} className="h-1.5 w-5 rounded-full" style={{ background: i <= 3 ? "linear-gradient(90deg,#F2D58A,#D4A24C)" : "rgba(255,255,255,0.12)" }} />
-                    ))
-                  )}
+                  ) : null}
                 </div>
-                <span className="flex items-center gap-1 rounded-full gold-gradient px-3.5 py-1.5 text-xs font-bold text-[#1a1410] shadow-lg shadow-gold/30">
-                  Learn now <ChevronRight className="h-3.5 w-3.5" />
+                <span className="flex items-center gap-1 rounded-full gold-gradient px-2.5 py-1 text-[10px] font-bold text-[#1a1410]">
+                  Learn now <ChevronRight className="h-3 w-3" />
                 </span>
               </div>
             </div>
           </button>
+
 
           {/* Prev/Next navigation for multiple tricks */}
           {todList.length > 1 && (
