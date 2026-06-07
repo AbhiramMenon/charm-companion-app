@@ -177,10 +177,9 @@ export function TopicsScreen({
                     )}>
                       {mode === "tricks" && done
                         ? <CheckCircle2 className="h-5 w-5 text-gold" />
-                        : mode === "shortnotes"
-                          ? <BookOpen className="h-5 w-5 text-gold" />
-                          : <TopicIcon className="h-5 w-5 text-gold/80" />}
+                        : <TopicIcon className="h-5 w-5 text-gold/80" />}
                     </div>
+
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <p className="truncate text-sm font-semibold text-foreground">{t.name}</p>
