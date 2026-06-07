@@ -7,24 +7,25 @@ import type { Trick } from "@/lib/krackit-data";
 import { cn } from "@/lib/utils";
 
 async function shareTrick(trick: Trick) {
-  const text = `${trick.title}\n\n✨ ${trick.content}\n\n${trick.explanation}\n\nLearn more tricks at KrackIT — One trick ahead.`;
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const url = `${origin}/t/${trick.id}`;
+  const text = `Check out this trick on KrackIT — "${trick.title}". Open in the app: ${url}`;
   if (navigator.share) {
     try {
-      await navigator.share({ title: trick.title, text });
+      await navigator.share({ title: trick.title, text, url });
       return "shared";
     } catch {
-      // user cancelled
       return "cancelled";
     }
   }
-  // Fallback: copy to clipboard
   try {
-    await navigator.clipboard.writeText(text);
+    await navigator.clipboard.writeText(url);
     return "copied";
   } catch {
     return "error";
   }
 }
+
 
 export function TrickDetail({
   trick,
