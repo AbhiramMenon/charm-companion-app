@@ -157,15 +157,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
     };
     const handleOffline = () => setData((d) => ({ ...d, offline: true }));
 
-    // Refresh tricks-of-day whenever app comes back into focus
-    // so admin-scheduled tricks appear without a full reload
-    const handleVisibility = () => {
-      if (!document.hidden) refreshTricksOfDay();
-    };
-
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
-    document.addEventListener('visibilitychange', handleVisibility);
+
+    // On Android, keyboard open/close fires visibilitychange — skip this
+    // listener in native context to prevent mid-typing full re-renders
+    const isNative = !!(window as any).Capacitor?.isNativePlatform?.();
+    if (!isNative) {
+      const handleVisibility = () => {
+        if (!document.hidden) refreshTricksOfDay();
+      };
+      document.addEventListener('visibilitychange', handleVisibility);
+    }
 
     const { data: { subscription } } = mobileAuth.onAuthChange(async (event) => {
       if (event === 'SIGNED_IN') loadData();
@@ -175,7 +178,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
       subscription.unsubscribe();
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
-      document.removeEventListener('visibilitychange', handleVisibility);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

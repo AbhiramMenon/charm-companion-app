@@ -239,12 +239,23 @@ function KrackItApp() {
     document.documentElement.setAttribute("data-theme", "dark");
   }, []);
 
-  // Screenshot / screen-record deterrence
+  // Screenshot / screen-record deterrence (web only — disabled in native app
+  // because Android fires visibilitychange when the keyboard opens, causing the
+  // app to blur itself and lose input focus on every keystroke)
+  const isNative = !!(window as any).Capacitor?.isNativePlatform?.();
   const [showRecordingWarning, setShowRecordingWarning] = useState(false);
   useEffect(() => {
     const root = document.getElementById("root") ?? document.body;
     root.style.userSelect = "none";
     (root.style as CSSStyleDeclaration & { webkitUserSelect: string }).webkitUserSelect = "none";
+    const style = document.createElement("style");
+    style.textContent = "@media print { body { display: none !important; } } * { -webkit-tap-highlight-color: transparent; }";
+    document.head.appendChild(style);
+
+    if (isNative) {
+      return () => { document.head.removeChild(style); };
+    }
+
     const onVisibility = () => {
       if (document.hidden) {
         root.style.filter = "blur(20px)";
@@ -255,14 +266,11 @@ function KrackItApp() {
       }
     };
     document.addEventListener("visibilitychange", onVisibility);
-    const style = document.createElement("style");
-    style.textContent = "@media print { body { display: none !important; } } * { -webkit-tap-highlight-color: transparent; }";
-    document.head.appendChild(style);
     return () => {
       document.removeEventListener("visibilitychange", onVisibility);
       document.head.removeChild(style);
     };
-  }, []);
+  }, [isNative]);
 
   useEffect(() => {
     const timer = setTimeout(() => setBooting(false), 1600);

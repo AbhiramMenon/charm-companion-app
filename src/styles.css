@@ -168,6 +168,12 @@
 
 /* ── Native app (Capacitor) fixes ─────────────────────────────────────────── */
 
+/* Full height that shrinks with keyboard (adjustResize works with dvh) */
+html, body, #root {
+  height: 100%;
+  min-height: 100%;
+}
+
 /* Remove blue overscroll glow on Android */
 html, body {
   overscroll-behavior: none;
@@ -189,10 +195,10 @@ input, textarea, [contenteditable="true"] {
   user-select: text;
 }
 
-/* Safe area insets for notched / punch-hole phones */
+/* Safe area insets for notched / punch-hole phones.
+   Only top/sides — bottom changes when keyboard opens and causes re-renders */
 body {
   padding-top: env(safe-area-inset-top);
-  padding-bottom: env(safe-area-inset-bottom);
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
 }
