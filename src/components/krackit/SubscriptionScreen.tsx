@@ -15,19 +15,26 @@ export function SubscriptionScreen({
   onSelectExamPack: (ids: string[]) => void;
   onBack: () => void;
 }) {
-  const { exams } = useData();
+  const { exams, pricing } = useData();
   const [selectedExams, setSelectedExams] = useState<Set<string>>(new Set());
+
+  const getMonthlyPrice = (examId: string): { price: number; original: number } => {
+    const p = pricing.find((x) => x.exam_id === examId);
+    const base = p?.monthly ?? 149;
+    const pct = (p as any)?.discount_percent ?? 0;
+    const discounted = pct > 0 ? Math.round(base * (1 - pct / 100)) : base;
+    return { price: discounted, original: base };
+  };
 
   const toggleExam = (id: string) => {
     setSelectedExams((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
+      // Single selection only — clicking the same exam deselects it
+      if (prev.has(id)) return new Set<string>();
+      return new Set<string>([id]);
     });
   };
 
-  const allUnlocked = tier !== "Free";
+  const allUnlocked = tier === "Gold Learner" || tier === "Pro";
 
   return (
     <div className="flex-1 overflow-y-auto pb-8">
@@ -56,10 +63,9 @@ export function SubscriptionScreen({
         <div className="flex items-center gap-2 mb-3">
           <Sparkles className="h-4 w-4 text-gold" />
           <h2 className="text-base font-bold text-foreground">Select Exams</h2>
-          <span className="rounded-full bg-gold/15 px-2 py-0.5 text-[10px] font-bold text-gold">₹149/exam/mo</span>
         </div>
         <p className="mb-3 text-xs text-muted-foreground">
-          Unlock all chapters for specific exams only. Pick one or more.
+          Unlock all chapters, mock tests, and tricks for one exam at a time.
         </p>
 
         <div className="space-y-2">
@@ -86,6 +92,16 @@ export function SubscriptionScreen({
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-foreground">{exam.name}</p>
                   <p className="text-[11px] text-muted-foreground">{exam.subjects} subjects · {exam.tricks} tricks</p>
+                  {!alreadySub && !allUnlocked && (() => {
+                    const { price, original } = getMonthlyPrice(exam.id);
+                    const hasDiscount = price < original;
+                    return (
+                      <p className="flex items-center gap-1 mt-0.5">
+                        {hasDiscount && <span className="text-[9px] text-muted-foreground line-through">₹{original}</span>}
+                        <span className={cn("text-[10px] font-semibold", hasDiscount ? "text-emerald-400" : "text-gold")}>₹{price}/mo</span>
+                      </p>
+                    );
+                  })()}
                 </div>
                 {alreadySub || allUnlocked ? (
                   <span className="shrink-0 rounded-full bg-emerald-400/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">Active</span>
@@ -102,14 +118,18 @@ export function SubscriptionScreen({
           })}
         </div>
 
-        {selectedExams.size > 0 && (
-          <button
-            onClick={() => onSelectExamPack(Array.from(selectedExams))}
-            className="mt-4 w-full rounded-2xl gold-gradient py-3.5 text-sm font-bold text-[#1a1410] shadow-lg shadow-gold/20"
-          >
-            Continue with {selectedExams.size} Exam{selectedExams.size > 1 ? "s" : ""} →
-          </button>
-        )}
+        {selectedExams.size > 0 && (() => {
+          const selectedId = Array.from(selectedExams)[0];
+          const selectedExam = exams.find((e) => e.id === selectedId);
+          return (
+            <button
+              onClick={() => onSelectExamPack([selectedId])}
+              className="mt-4 w-full rounded-2xl gold-gradient py-3.5 text-sm font-bold text-[#1a1410] shadow-lg shadow-gold/20"
+            >
+              Subscribe to {selectedExam?.short ?? "Exam"} →
+            </button>
+          );
+        })()}
       </div>
 
       <p className="mt-6 text-center text-[11px] text-muted-foreground px-5">Cancel anytime · Secure payment via Razorpay</p>

@@ -5,6 +5,7 @@ import { uid, type Subject } from "../../lib/data";
 import { subjectsApi } from "../../lib/adminApi";
 import { Modal, Field, Input, Select, SaveBtn, DeleteConfirm } from "../Modal";
 import { Pagination, usePagination } from "../Pagination";
+import { useSort, Th } from "../Sort";
 
 const empty = (examId = ""): Omit<Subject, "id"> => ({ name: "", icon: "📚", chapters: 0, examId, color: "from-amber-500/25 to-amber-900/5" });
 
@@ -25,10 +26,14 @@ export function SubjectsManager() {
   const [filterExam, setFilterExam] = useState("");
 
   const allFiltered = filterExam ? store.subjects.filter((s) => s.examId === filterExam) : store.subjects;
-  const { page, setPage, pageItems: filtered, totalPages } = usePagination(allFiltered, 15);
+  const { sortField, sortDir, toggle, sorted } = useSort(allFiltered as unknown as Record<string, unknown>[], "name");
+  const { page, setPage, pageItems: filtered, totalPages } = usePagination(sorted as unknown as typeof allFiltered, 15);
 
   const openAdd = () => { setForm(empty(filterExam)); setModal("add"); };
-  const openEdit = (s: Subject) => { setForm({ name: s.name, icon: s.icon, chapters: s.chapters, examId: s.examId, color: s.color }); setModal(s); };
+  const openEdit = (s: Subject) => {
+    setForm({ name: s.name, icon: s.icon, chapters: s.chapters, examId: s.examId, color: s.color });
+    setModal(s);
+  };
 
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -77,9 +82,9 @@ export function SubjectsManager() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-[var(--border)] text-[var(--muted-foreground)] text-xs uppercase tracking-wider">
-              <th className="px-5 py-3 text-left">Subject</th>
-              <th className="px-5 py-3 text-left">Exam</th>
-              <th className="px-5 py-3 text-right">Chapters</th>
+              <Th field="name"     label="Subject"  sortField={sortField} sortDir={sortDir} onToggle={toggle} />
+              <Th field="examId"   label="Exam"     sortField={sortField} sortDir={sortDir} onToggle={toggle} />
+              <Th field="chapters" label="Chapters" sortField={sortField} sortDir={sortDir} onToggle={toggle} align="right" />
               <th className="px-5 py-3" />
             </tr>
           </thead>

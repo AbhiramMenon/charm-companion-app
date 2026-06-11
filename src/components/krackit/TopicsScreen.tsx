@@ -73,8 +73,10 @@ export function TopicsScreen({
   openedTricks,
   isLocked,
   mode,
+  medium,
   onBack,
   onSelect,
+  onSelectWithMode,
   onOpenSubscription,
 }: {
   chapter: Chapter;
@@ -82,11 +84,13 @@ export function TopicsScreen({
   openedTricks: Set<string>;
   isLocked: boolean;
   mode: ExamMode;
+  medium?: string;
   onBack: () => void;
   onSelect: (t: Topic) => void;
+  onSelectWithMode: (t: Topic, mode: ExamMode) => void;
   onOpenSubscription: () => void;
 }) {
-  const { topics, tricks, shortNotes } = useData();
+  const { topics, tricks, shortNotes, maps, translate } = useData();
   const list = topics.filter((t) => t.chapterId === chapter.id);
 
   const totalTricks = list.reduce((s, t) => {
@@ -113,6 +117,14 @@ export function TopicsScreen({
   };
 
   const topicNoteCount = (t: Topic) => shortNotes.filter((n) => n.topicId === t.id).length;
+  const topicMapCount  = (t: Topic) => maps.filter((m) => m.topicId === t.id).length;
+  const topicTrickCount = (t: Topic) => tricks.filter((tr) => tr.topic === t.id).length || t.tricksCount;
+
+  const OTHER_MODES: { mode: ExamMode; label: string; Icon: IconComp }[] = [
+    { mode: "tricks",     label: "Tricks",  Icon: Sparkles },
+    { mode: "shortnotes", label: "Notes",   Icon: BookOpen },
+    { mode: "maps",       label: "Maps",    Icon: Map },
+  ];
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -127,7 +139,7 @@ export function TopicsScreen({
             </div>
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-widest text-gold">Chapter</p>
-              <h1 className="text-xl font-bold text-foreground">{chapter.name}</h1>
+              <h1 className="text-xl font-bold text-foreground">{translate(chapter.name)}</h1>
             </div>
           </div>
 
@@ -162,46 +174,70 @@ export function TopicsScreen({
               const trickCount = tricks.filter((tr) => tr.topic === t.id).length || t.tricksCount;
               const TopicIcon = getTopicIcon(t.id);
 
+              const mapsCount  = topicMapCount(t);
+              const tCount     = topicTrickCount(t);
+
               return (
                 <li key={t.id}>
-                  <button
-                    onClick={() => onSelect(t)}
-                    className={cn(
-                      "group flex w-full items-center gap-3 rounded-2xl border border-border bg-surface p-4 text-left transition-colors hover:border-gold/40",
-                      done && mode === "tricks" && "border-gold/20 bg-gold/5"
-                    )}
-                  >
-                    <div className={cn(
-                      "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ring-1 ring-white/5 bg-background",
-                      done && mode === "tricks" && "bg-gold/15"
-                    )}>
-                      {mode === "tricks" && done
-                        ? <CheckCircle2 className="h-5 w-5 text-gold" />
-                        : <TopicIcon className="h-5 w-5 text-gold/80" />}
-                    </div>
+                  <div className={cn(
+                    "rounded-2xl border border-border bg-surface transition-colors",
+                    done && mode === "tricks" && "border-gold/20 bg-gold/5"
+                  )}>
+                    {/* Main tap row */}
+                    <button
+                      onClick={() => onSelect(t)}
+                      className="flex w-full items-center gap-3 p-4 text-left"
+                    >
+                      <div className={cn(
+                        "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ring-1 ring-white/5 bg-background",
+                        done && mode === "tricks" && "bg-gold/15"
+                      )}>
+                        {mode === "tricks" && done
+                          ? <CheckCircle2 className="h-5 w-5 text-gold" />
+                          : <TopicIcon className="h-5 w-5 text-gold/80" />}
+                      </div>
 
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="truncate text-sm font-semibold text-foreground">{t.name}</p>
-                        {done && mode === "tricks" && (
-                          <span className="shrink-0 rounded-full bg-gold/20 px-2 py-0.5 text-[10px] font-semibold text-gold">Mastered</span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="truncate text-sm font-semibold text-foreground">{translate(t.name)}</p>
+                          {done && mode === "tricks" && (
+                            <span className="shrink-0 rounded-full bg-gold/20 px-2 py-0.5 text-[10px] font-semibold text-gold">Mastered</span>
+                          )}
+                        </div>
+                        {mode === "shortnotes" ? (
+                          <p className="mt-0.5 text-[11px] text-muted-foreground">
+                            {noteCount > 0 ? `${noteCount} note${noteCount > 1 ? "s" : ""} available` : "No notes yet"}
+                          </p>
+                        ) : mode === "maps" ? (
+                          <p className="mt-0.5 text-[11px] text-muted-foreground">
+                            {mapsCount > 0 ? `${mapsCount} map${mapsCount > 1 ? "s" : ""}` : "No maps yet"}
+                          </p>
+                        ) : (
+                          <p className="mt-0.5 text-[11px] text-muted-foreground">{tCount} tricks</p>
+                        )}
+                        {mode === "tricks" && prog > 0 && !done && (
+                          <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-background">
+                            <div className="h-full gold-gradient" style={{ width: `${Math.round(prog * 100)}%` }} />
+                          </div>
                         )}
                       </div>
-                      {mode === "shortnotes" ? (
-                        <p className="mt-0.5 text-[11px] text-muted-foreground">
-                          {noteCount > 0 ? `${noteCount} note${noteCount > 1 ? "s" : ""} available` : "No notes yet"}
-                        </p>
-                      ) : (
-                        <p className="mt-0.5 text-[11px] text-muted-foreground">{trickCount} tricks</p>
-                      )}
-                      {mode === "tricks" && prog > 0 && !done && (
-                        <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-background">
-                          <div className="h-full gold-gradient" style={{ width: `${Math.round(prog * 100)}%` }} />
-                        </div>
-                      )}
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    </button>
+
+                    {/* Cross-section jump pills */}
+                    <div className="flex gap-2 border-t border-border/50 px-4 py-2.5">
+                      {OTHER_MODES.filter((m) => m.mode !== mode).map(({ mode: targetMode, label, Icon }) => (
+                        <button
+                          key={targetMode}
+                          onClick={() => onSelectWithMode(t, targetMode)}
+                          className="flex items-center gap-1 rounded-full border border-border bg-background px-2.5 py-1 text-[11px] font-semibold text-muted-foreground transition-colors hover:border-gold/40 hover:text-gold active:scale-95"
+                        >
+                          <Icon className="h-3 w-3" />
+                          {label}
+                        </button>
+                      ))}
                     </div>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                  </button>
+                  </div>
                 </li>
               );
             })}

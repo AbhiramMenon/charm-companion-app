@@ -1,7 +1,8 @@
-import { useState } from "react";
-import { Check, ExternalLink, Info, Plus, Save, Trash2, X } from "lucide-react";
+import { useRef, useState } from "react";
+import { Check, ExternalLink, ImageUp, Info, Plus, Save, X } from "lucide-react";
 import { useStore } from "../../App";
 import { aboutApi } from "../../lib/adminApi";
+import { supabase } from "../../lib/supabase";
 import type { AppAbout } from "../../lib/data";
 
 function Field({
@@ -41,6 +42,24 @@ export function AboutManager() {
   const [form, setForm] = useState<AppAbout>(structuredClone(store.about));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
+  const [uploading, setUploading] = useState<Record<number, boolean>>({});
+  const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  const handlePhotoUpload = async (i: number, file: File) => {
+    setUploading((u) => ({ ...u, [i]: true }));
+    try {
+      const ext = file.name.split(".").pop() ?? "jpg";
+      const path = `member_${i}_${Date.now()}.${ext}`;
+      const { data, error } = await supabase.storage.from("team-photos").upload(path, file, { upsert: true });
+      if (error) { alert(`Upload failed: ${error.message}`); return; }
+      const { data: { publicUrl } } = supabase.storage.from("team-photos").getPublicUrl(data.path);
+      updateTeamMember(i, "photo", publicUrl);
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setUploading((u) => ({ ...u, [i]: false }));
+    }
+  };
 
   const set = <K extends keyof AppAbout>(key: K, value: AppAbout[K]) => {
     setForm((f) => ({ ...f, [key]: value }));
@@ -66,9 +85,9 @@ export function AboutManager() {
     } catch (err: any) { alert(err.message); }
   };
 
-  const addTeamMember = () => set("teamMembers", [...form.teamMembers, { name: "", role: "" }]);
+  const addTeamMember = () => set("teamMembers", [...form.teamMembers, { name: "", role: "", photo: "" }]);
   const removeTeamMember = (i: number) => set("teamMembers", form.teamMembers.filter((_, idx) => idx !== i));
-  const updateTeamMember = (i: number, field: "name" | "role", val: string) =>
+  const updateTeamMember = (i: number, field: "name" | "role" | "photo", val: string) =>
     set("teamMembers", form.teamMembers.map((m, idx) => idx === i ? { ...m, [field]: val } : m));
 
   const addSocialLink = () => set("socialLinks", [...form.socialLinks, { platform: "", url: "" }]);
@@ -133,24 +152,57 @@ export function AboutManager() {
             <Plus className="h-3.5 w-3.5" /> Add Member
           </button>
         </div>
-        <div className="space-y-2">
+        <div className="space-y-3">
           {form.teamMembers.map((m, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <input
-                value={m.name}
-                onChange={(e) => updateTeamMember(i, "name", e.target.value)}
-                placeholder="Name"
-                className="flex-1 rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]/50 focus:outline-none focus:border-[var(--gold)]"
-              />
-              <input
-                value={m.role}
-                onChange={(e) => updateTeamMember(i, "role", e.target.value)}
-                placeholder="Role"
-                className="flex-1 rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]/50 focus:outline-none focus:border-[var(--gold)]"
-              />
-              <button onClick={() => removeTeamMember(i)} className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:text-[var(--destructive)] hover:bg-[var(--destructive)]/10 transition-colors">
-                <X className="h-4 w-4" />
-              </button>
+            <div key={i} className="flex flex-col gap-2 rounded-xl border border-[var(--border)] bg-[var(--background)] p-3">
+              <div className="flex items-center gap-2">
+                {m.photo ? (
+                  <img src={m.photo} alt={m.name} className="h-10 w-10 rounded-full object-cover ring-1 ring-[var(--gold)]/30 shrink-0" />
+                ) : (
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--gold)]/15 text-xs font-bold text-[var(--gold)]">
+                    {m.name ? m.name[0].toUpperCase() : "?"}
+                  </div>
+                )}
+                <input
+                  value={m.name}
+                  onChange={(e) => updateTeamMember(i, "name", e.target.value)}
+                  placeholder="Full Name"
+                  className="flex-1 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]/50 focus:outline-none focus:border-[var(--gold)]"
+                />
+                <input
+                  value={m.role}
+                  onChange={(e) => updateTeamMember(i, "role", e.target.value)}
+                  placeholder="Role"
+                  className="flex-1 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]/50 focus:outline-none focus:border-[var(--gold)]"
+                />
+                <button onClick={() => removeTeamMember(i)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:text-[var(--destructive)] hover:bg-[var(--destructive)]/10 transition-colors">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  value={m.photo ?? ""}
+                  onChange={(e) => updateTeamMember(i, "photo", e.target.value)}
+                  placeholder="Photo URL or click Upload →"
+                  className="flex-1 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]/50 focus:outline-none focus:border-[var(--gold)]"
+                />
+                <label
+                  className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold cursor-pointer transition-colors shrink-0 ${
+                    uploading[i] ? "bg-[var(--gold)]/5 text-[var(--muted-foreground)]" : "bg-[var(--gold)]/10 text-[var(--gold)] hover:bg-[var(--gold)]/20"
+                  }`}
+                >
+                  <ImageUp className="h-3.5 w-3.5" />
+                  {uploading[i] ? "Uploading…" : "Upload"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    ref={(el) => { fileInputRefs.current[i] = el; }}
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePhotoUpload(i, f); }}
+                    disabled={uploading[i]}
+                  />
+                </label>
+              </div>
             </div>
           ))}
           {form.teamMembers.length === 0 && <p className="text-xs text-[var(--muted-foreground)]">No team members added yet.</p>}

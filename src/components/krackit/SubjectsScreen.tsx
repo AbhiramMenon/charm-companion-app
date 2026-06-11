@@ -1,4 +1,4 @@
-import { ArrowLeft, BookOpen, ChevronRight, Sparkles } from "lucide-react";
+import { ArrowLeft, BookOpen, ChevronRight, ClipboardList, Map, Sparkles } from "lucide-react";
 import { type Exam, type Subject } from "@/lib/krackit-data";
 import { useData } from "@/lib/DataContext";
 import { cn } from "@/lib/utils";
@@ -19,7 +19,7 @@ function subjectProgress(subjectId: string, mastered: Set<string>, chapters: Ret
   return total > 0 ? done / total : 0;
 }
 
-export type ExamMode = "tricks" | "shortnotes";
+export type ExamMode = "tricks" | "shortnotes" | "maps";
 
 export function SubjectsScreen({
   exam,
@@ -27,22 +27,28 @@ export function SubjectsScreen({
   openedTricks,
   mode,
   isLocked,
+  medium,
   onModeChange,
   onBack,
   onSelect,
   onOpenSubscription,
+  mockQuestionCount = 0,
+  onMockTest,
 }: {
   exam: Exam;
   mastered: Set<string>;
   openedTricks: Set<string>;
   mode: ExamMode;
   isLocked: boolean;
+  medium?: string;
   onModeChange: (m: ExamMode) => void;
   onBack: () => void;
   onSelect: (s: Subject) => void;
   onOpenSubscription: () => void;
+  mockQuestionCount?: number;
+  onMockTest?: () => void;
 }) {
-  const { subjects, chapters, topics, tricks } = useData();
+  const { subjects, chapters, topics, tricks, translate } = useData();
   const list = subjects.filter((s) => s.examId === exam.id);
   const isFree = isLocked;
 
@@ -57,7 +63,16 @@ export function SubjectsScreen({
           <ArrowLeft className="h-5 w-5" />
         </button>
         <div className="mt-4">
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-gold">{exam.short}</p>
+          <div className="flex items-center gap-2">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-gold">{exam.short}</p>
+            <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold ring-1 ${
+              (medium ?? exam.medium) === 'hindi'
+                ? 'bg-orange-400/15 text-orange-400 ring-orange-400/25'
+                : 'bg-sky-400/15 text-sky-400 ring-sky-400/25'
+            }`}>
+              {(medium ?? exam.medium) === 'hindi' ? 'Hindi Medium' : 'English Medium'}
+            </span>
+          </div>
           <h1 className="mt-1 text-2xl font-bold text-foreground">{exam.name}</h1>
           <p className="text-sm text-muted-foreground">{exam.description}</p>
         </div>
@@ -72,9 +87,7 @@ export function SubjectsScreen({
             onClick={() => onModeChange("tricks")}
             className={cn(
               "flex flex-1 items-center justify-center gap-2 rounded-xl py-2 text-xs font-semibold transition-all",
-              mode === "tricks"
-                ? "bg-gold/15 text-gold"
-                : "text-muted-foreground hover:text-foreground"
+              mode === "tricks" ? "bg-gold/15 text-gold" : "text-muted-foreground hover:text-foreground"
             )}
           >
             <Sparkles className="h-3.5 w-3.5" />
@@ -84,20 +97,40 @@ export function SubjectsScreen({
             onClick={() => onModeChange("shortnotes")}
             className={cn(
               "flex flex-1 items-center justify-center gap-2 rounded-xl py-2 text-xs font-semibold transition-all",
-              mode === "shortnotes"
-                ? "bg-gold/15 text-gold"
-                : "text-muted-foreground hover:text-foreground"
+              mode === "shortnotes" ? "bg-gold/15 text-gold" : "text-muted-foreground hover:text-foreground"
             )}
           >
             <BookOpen className="h-3.5 w-3.5" />
-            Short Notes
+            Notes
+          </button>
+          <button
+            onClick={() => onModeChange("maps")}
+            className={cn(
+              "flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-semibold transition-all",
+              mode === "maps" ? "bg-gold/15 text-gold" : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Map className="h-3.5 w-3.5" />
+            Maps
+          </button>
+          <button
+            onClick={onMockTest}
+            className="relative flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-semibold text-muted-foreground transition-all hover:text-foreground active:scale-95"
+          >
+            <ClipboardList className="h-3.5 w-3.5" />
+            Mock Test
+            {mockQuestionCount > 0 && (
+              <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-gold text-[8px] font-bold text-[#1a1410]">
+                {mockQuestionCount > 99 ? "99+" : mockQuestionCount}
+              </span>
+            )}
           </button>
         </div>
       </header>
 
       <section className="mt-5 px-5">
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-          {mode === "shortnotes" ? "Browse Notes by Subject" : "Subjects"}
+          {mode === "shortnotes" ? "Browse Notes by Subject" : mode === "maps" ? "Browse Maps by Subject" : "Subjects"}
         </h2>
         {list.length === 0 ? (
           <div className="flex flex-col items-center gap-3 rounded-3xl border border-dashed border-border p-10 text-center">
@@ -121,7 +154,7 @@ export function SubjectsScreen({
                     {s.icon}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-foreground">{s.name}</p>
+                    <p className="text-sm font-semibold text-foreground">{translate(s.name)}</p>
                     <p className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
                       {s.chapters} chapters <ChevronRight className="h-3 w-3" />
                     </p>

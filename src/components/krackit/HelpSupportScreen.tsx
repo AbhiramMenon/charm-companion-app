@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { ArrowLeft, ChevronDown, ChevronUp, Mail, MessageSquare } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronUp, Mail, MessageSquare, Compass } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { issueApi } from "@/lib/mobileApi";
+import { useTour } from "@/lib/TourContext";
 
 const faqs = [
   { q: "How does KrackIT help me prepare?", a: "KrackIT gives you memory tricks (mnemonics) for competitive exams. Instead of rote learning, you remember formulas, facts and sequences using creative shortcuts that stick." },
@@ -23,6 +24,7 @@ export function HelpSupportScreen({
   userName?: string;
   userEmail?: string;
 }) {
+  const { replayTour } = useTour();
   const [expanded, setExpanded] = useState<number | null>(null);
   const [subject, setSubject] = useState("");
   const [msg, setMsg] = useState("");
@@ -32,24 +34,24 @@ export function HelpSupportScreen({
 
   const send = async () => {
     if (!msg.trim()) return;
+    if (!userId) { setError("Please sign in to send a message."); return; }
     setSending(true);
     setError("");
     try {
-      if (userId && userName && userEmail) {
-        await issueApi.submit({
-          userId,
-          userName,
-          userEmail,
-          subject: subject.trim() || "General Inquiry",
-          message: msg.trim(),
-        });
-      }
+      await issueApi.submit({
+        userId,
+        userName:  userName  ?? "Unknown",
+        userEmail: userEmail ?? "",
+        subject:   subject.trim() || "General Inquiry",
+        message:   msg.trim(),
+      });
       setSent(true);
       setSubject("");
       setMsg("");
-      setTimeout(() => setSent(false), 3000);
-    } catch {
-      setError("Failed to send. Please try again.");
+      setTimeout(() => setSent(false), 4000);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to send. Please try again.";
+      setError(msg);
     } finally {
       setSending(false);
     }
@@ -81,6 +83,21 @@ export function HelpSupportScreen({
             <p className="text-[11px] text-muted-foreground">9 AM – 6 PM IST</p>
           </button>
         </div>
+
+        {/* App Tour replay */}
+        <button
+          onClick={() => { replayTour("home"); onBack(); }}
+          className="flex w-full items-center gap-4 rounded-2xl border border-gold/25 bg-gold/8 px-5 py-4"
+        >
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gold/15 ring-1 ring-gold/25">
+            <Compass className="h-5 w-5 text-gold" />
+          </div>
+          <div className="min-w-0 flex-1 text-left">
+            <p className="text-sm font-semibold text-foreground">App Tour</p>
+            <p className="text-[11px] text-muted-foreground">Replay the guided walkthrough</p>
+          </div>
+          <span className="text-xs font-bold text-gold">Start →</span>
+        </button>
 
         {/* FAQs */}
         <div>

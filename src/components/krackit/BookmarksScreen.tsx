@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { BookmarkCheck, ChevronDown, ChevronRight, StickyNote, BookOpen } from "lucide-react";
+import { BookmarkCheck, ChevronDown, ChevronRight, Plus, Sparkles, StickyNote, BookOpen, Trash2 } from "lucide-react";
 import { type ShortNote, type Trick } from "@/lib/krackit-data";
+import type { UserTrick } from "@/lib/mobileApi";
 import { useData } from "@/lib/DataContext";
 import { TrickCard } from "./TrickCard";
 import { cn } from "@/lib/utils";
@@ -13,6 +14,9 @@ export function BookmarksScreen({
   toggleSave,
   toggleSaveNote,
   openTrick,
+  userTricks = [],
+  onAddCustomTrick,
+  onDeleteCustomTrick,
 }: {
   saved: Set<string>;
   savedNotes: Set<string>;
@@ -21,9 +25,12 @@ export function BookmarksScreen({
   toggleSave: (id: string) => void;
   toggleSaveNote: (noteId: string) => void;
   openTrick: (t: Trick, list: Trick[]) => void;
+  userTricks?: UserTrick[];
+  onAddCustomTrick?: () => void;
+  onDeleteCustomTrick?: (id: string) => void;
 }) {
-  const { tricks, topics, chapters, subjects, shortNotes } = useData();
-  const [activeTab, setActiveTab] = useState<"tricks" | "notes">("tricks");
+  const { tricks, topics, chapters, subjects, shortNotes, exams } = useData();
+  const [activeTab, setActiveTab] = useState<"tricks" | "notes" | "mine">("tricks");
 
   // ── Tricks grouping ──────────────────────────────────────────
   const savedTricks = tricks.filter((t) => saved.has(t.id));
@@ -72,7 +79,7 @@ export function BookmarksScreen({
       <header className="px-5 pb-3 pt-6">
         <h1 className="text-2xl font-bold text-foreground">Saved</h1>
         <p className="text-sm text-muted-foreground">
-          {savedTricks.length} tricks · {savedNotesList.length} notes
+          {savedTricks.length} tricks · {savedNotesList.length} notes · {userTricks.length} my tricks
         </p>
       </header>
 
@@ -83,14 +90,21 @@ export function BookmarksScreen({
           className={cn("flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-semibold transition-all",
             activeTab === "tricks" ? "bg-gold/15 text-gold" : "text-muted-foreground")}
         >
-          <BookmarkCheck className="h-3.5 w-3.5" /> Tricks ({savedTricks.length})
+          <BookmarkCheck className="h-3.5 w-3.5" /> Tricks
         </button>
         <button
           onClick={() => setActiveTab("notes")}
           className={cn("flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-semibold transition-all",
             activeTab === "notes" ? "bg-gold/15 text-gold" : "text-muted-foreground")}
         >
-          <StickyNote className="h-3.5 w-3.5" /> Notes ({savedNotesList.length})
+          <StickyNote className="h-3.5 w-3.5" /> Notes
+        </button>
+        <button
+          onClick={() => setActiveTab("mine")}
+          className={cn("flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-semibold transition-all",
+            activeTab === "mine" ? "bg-gold/15 text-gold" : "text-muted-foreground")}
+        >
+          <Sparkles className="h-3.5 w-3.5" /> Mine
         </button>
       </div>
 
@@ -150,6 +164,67 @@ export function BookmarksScreen({
                   </div>
                 )}
               </section>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── My Tricks tab ── */}
+      {activeTab === "mine" && (
+        <div className="space-y-3 px-5 pt-2">
+          {onAddCustomTrick && (
+            <button
+              onClick={onAddCustomTrick}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-gold/30 bg-gold/5 py-3.5 text-sm font-semibold text-gold hover:bg-gold/10 active:scale-[0.98] transition-all"
+            >
+              <Plus className="h-4 w-4" /> Add My Trick
+            </button>
+          )}
+          {userTricks.length === 0 ? (
+            <div className="mt-4 flex flex-col items-center gap-3 rounded-3xl border border-dashed border-border p-10 text-center">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gold/15">
+                <Sparkles className="h-6 w-6 text-gold" />
+              </div>
+              <p className="font-semibold text-foreground">No custom tricks yet</p>
+              <p className="mt-1 text-xs text-muted-foreground">Add your own mnemonics and shortcuts — only visible to you.</p>
+            </div>
+          ) : userTricks.map((ut) => {
+            const exam = exams.find((e) => e.id === ut.exam_id);
+            return (
+              <div key={ut.id} className="rounded-2xl border border-border bg-surface p-4">
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                      {exam && (
+                        <span className={cn(
+                          "flex h-4 w-4 shrink-0 items-center justify-center rounded text-[7px] font-bold text-foreground",
+                          `bg-gradient-to-br ${exam.accent}`
+                        )}>
+                          {exam.short.slice(0, 2)}
+                        </span>
+                      )}
+                      <span className="text-[10px] font-semibold text-muted-foreground">{ut.subject_name}</span>
+                      {ut.chapter_name && <span className="text-[10px] text-muted-foreground/60">→ {ut.chapter_name}</span>}
+                      {ut.topic_name && <span className="text-[10px] text-muted-foreground/50">→ {ut.topic_name}</span>}
+                    </div>
+                    <p className="text-sm font-semibold text-foreground">{ut.title}</p>
+                  </div>
+                  {onDeleteCustomTrick && (
+                    <button
+                      onClick={() => onDeleteCustomTrick(ut.id)}
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+                <div className="rounded-xl border border-gold/20 bg-gold/5 px-3 py-2.5">
+                  <p className="text-sm font-semibold text-gold leading-snug">{ut.content}</p>
+                </div>
+                <p className="mt-1.5 text-[10px] text-muted-foreground">
+                  Added {new Date(ut.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
+                </p>
+              </div>
             );
           })}
         </div>

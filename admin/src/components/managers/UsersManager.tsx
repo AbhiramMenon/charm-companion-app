@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Users, CreditCard, AlertTriangle, Search, ChevronDown } from "lucide-react";
+import { Users, CreditCard, AlertTriangle, Search } from "lucide-react";
 import { useStore } from "../../App";
 import type { AppUser } from "../../lib/data";
 import { Pagination, usePagination } from "../Pagination";
+import { useSort, Th } from "../Sort";
 
 const TIER_COLOR: Record<string, string> = {
   Free:       "bg-zinc-400/15 text-zinc-400",
@@ -77,7 +78,8 @@ export function UsersManager() {
     const q = search.toLowerCase();
     return u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
   });
-  const { page, setPage, pageItems: displayed, totalPages } = usePagination(filteredUsers, 15);
+  const { sortField, sortDir, toggle, sorted } = useSort(filteredUsers as unknown as Record<string, unknown>[], "name");
+  const { page, setPage, pageItems: displayed, totalPages } = usePagination(sorted as unknown as AppUser[], 15);
 
   const subscribedCount = store.users.filter((u) => u.tier !== "Free").length;
   const expiringCount   = byTab.expiring.length;
@@ -143,14 +145,14 @@ export function UsersManager() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-[var(--border)] text-[var(--muted-foreground)] text-xs uppercase tracking-wider">
-                <th className="px-4 py-3 text-left">User <ChevronDown className="inline h-3 w-3" /></th>
-                <th className="px-4 py-3 text-left">Tier</th>
-                <th className="px-4 py-3 text-left">Exams</th>
-                <th className="px-4 py-3 text-left">Expiry</th>
-                <th className="px-4 py-3 text-left">Billing</th>
-                <th className="px-4 py-3 text-right">Tricks</th>
-                <th className="px-4 py-3 text-right">Streak</th>
-                <th className="px-4 py-3 text-left">Last Active</th>
+                <Th field="name"         label="User"        sortField={sortField} sortDir={sortDir} onToggle={toggle} />
+                <Th field="tier"         label="Tier"        sortField={sortField} sortDir={sortDir} onToggle={toggle} />
+                <th className="px-4 py-3 text-left text-[var(--muted-foreground)] text-xs uppercase tracking-wider">Exams</th>
+                <Th field="subscriptionExpiry" label="Expiry"  sortField={sortField} sortDir={sortDir} onToggle={toggle} />
+                <th className="px-4 py-3 text-left text-[var(--muted-foreground)] text-xs uppercase tracking-wider">Billing</th>
+                <Th field="tricksLearned" label="Tricks"     sortField={sortField} sortDir={sortDir} onToggle={toggle} align="right" />
+                <Th field="streak"        label="Streak"     sortField={sortField} sortDir={sortDir} onToggle={toggle} align="right" />
+                <Th field="lastActiveAt"  label="Last Active" sortField={sortField} sortDir={sortDir} onToggle={toggle} />
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--border)]">

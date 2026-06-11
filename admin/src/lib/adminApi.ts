@@ -11,7 +11,7 @@ import { supabase } from './supabase';
 export type {
   Exam, Subject, Chapter, Topic, Trick, ShortNote, ExamNews,
   ExamPricing, AppSettings, TrickOfDay, TrickRating,
-  SupportIssue, PushNotification, UserProfile, Subscription,
+  SupportIssue, PushNotification, UserProfile, Subscription, TopicMap,
 } from './adminApiTypes';
 
 import type {
@@ -146,19 +146,38 @@ export const topicsApi = {
 
 export const tricksApi = {
   async list(): Promise<Trick[]> {
-    const { data, error } = await supabase.from('tricks').select('*').order('sort_order');
+    const { data, error } = await supabase.from('tricks_english').select('*').order('sort_order');
     return ok(data, error);
   },
   async create(payload: Omit<Trick, 'created_at' | 'updated_at'>): Promise<Trick> {
-    const { data, error } = await supabase.from('tricks').insert(payload).select().single();
+    const { data, error } = await supabase.from('tricks_english').insert(payload).select().single();
     return ok(data, error);
   },
   async update(id: string, payload: Partial<Trick>): Promise<Trick> {
-    const { data, error } = await supabase.from('tricks').update(payload).eq('id', id).select().single();
+    const { data, error } = await supabase.from('tricks_english').update(payload).eq('id', id).select().single();
     return ok(data, error);
   },
   async delete(id: string): Promise<void> {
-    const { error } = await supabase.from('tricks').delete().eq('id', id);
+    const { error } = await supabase.from('tricks_english').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+};
+
+export const tricksHindiApi = {
+  async list(): Promise<Trick[]> {
+    const { data, error } = await supabase.from('tricks_hindi').select('*').order('sort_order');
+    return ok(data, error);
+  },
+  async create(payload: Omit<Trick, 'created_at' | 'updated_at'>): Promise<Trick> {
+    const { data, error } = await supabase.from('tricks_hindi').insert(payload).select().single();
+    return ok(data, error);
+  },
+  async update(id: string, payload: Partial<Trick>): Promise<Trick> {
+    const { data, error } = await supabase.from('tricks_hindi').update(payload).eq('id', id).select().single();
+    return ok(data, error);
+  },
+  async delete(id: string): Promise<void> {
+    const { error } = await supabase.from('tricks_hindi').delete().eq('id', id);
     if (error) throw new Error(error.message);
   },
 };
@@ -280,23 +299,23 @@ export const trickOfDayApi = {
     const { data, error } = await supabase.from('trick_of_day').select('*').order('date', { ascending: false });
     return ok(data, error);
   },
-  async create(trickId: string, date: string, note?: string): Promise<TrickOfDay> {
+  async create(trickId: string, date: string, note?: string, accent?: string): Promise<TrickOfDay> {
     const id = `tod-${date.replace(/-/g, '')}-${Math.random().toString(36).slice(2, 7)}`;
     const { data, error } = await supabase
       .from('trick_of_day')
-      .insert({ id, trick_id: trickId, date, note: note ?? null })
+      .insert({ id, trick_id: trickId, date, note: note ?? null, accent: accent ?? 'gold' })
       .select().single();
     return ok(data, error);
   },
-  async update(id: string, trickId: string, note?: string): Promise<void> {
+  async update(id: string, trickId: string, note?: string, accent?: string): Promise<void> {
     const { error } = await supabase
       .from('trick_of_day')
-      .update({ trick_id: trickId, note: note ?? null })
+      .update({ trick_id: trickId, note: note ?? null, accent: accent ?? 'gold' })
       .eq('id', id);
     if (error) throw new Error(error.message);
   },
-  async upsert(trickId: string, date: string, note?: string): Promise<TrickOfDay> {
-    return trickOfDayApi.create(trickId, date, note);
+  async upsert(trickId: string, date: string, note?: string, accent?: string): Promise<TrickOfDay> {
+    return trickOfDayApi.create(trickId, date, note, accent);
   },
   async delete(id: string): Promise<void> {
     const { error } = await supabase.from('trick_of_day').delete().eq('id', id);
@@ -311,10 +330,10 @@ export const pricingApi = {
     const { data, error } = await supabase.from('exam_pricing').select('*');
     return ok(data, error);
   },
-  async upsert(examId: string, monthly: number, sixmonths: number, yearly: number): Promise<ExamPricing> {
+  async upsert(examId: string, monthly: number, sixmonths: number, yearly: number, discountPercent = 0): Promise<ExamPricing> {
     const { data, error } = await supabase
       .from('exam_pricing')
-      .upsert({ exam_id: examId, monthly, sixmonths, yearly }, { onConflict: 'exam_id' })
+      .upsert({ exam_id: examId, monthly, sixmonths, yearly, discount_percent: discountPercent }, { onConflict: 'exam_id' })
       .select().single();
     return ok(data, error);
   },
@@ -329,6 +348,17 @@ export const aboutApi = {
   },
   async update(payload: Partial<Omit<AppSettings, 'id' | 'updated_at'>>): Promise<AppSettings> {
     const { data, error } = await supabase.from('app_settings').update(payload).eq('id', 1).select().single();
+    return ok(data, error);
+  },
+};
+
+// ─── Subscriptions ────────────────────────────────────────────
+
+import type { Subscription } from './adminApiTypes';
+
+export const subscriptionsApi = {
+  async list(): Promise<Subscription[]> {
+    const { data, error } = await supabase.from('subscriptions').select('*').order('created_at', { ascending: false });
     return ok(data, error);
   },
 };
@@ -397,18 +427,109 @@ export async function syncAllCounts(data: {
   await Promise.allSettled(updates);
 }
 
+// ─── Mock Questions ───────────────────────────────────────────
+
+import type { MockQuestion } from './adminApiTypes';
+
+export const mockQuestionsApi = {
+  async list(): Promise<MockQuestion[]> {
+    const { data, error } = await supabase.from('mock_questions').select('*').order('exam_id').order('sort_order');
+    return ok(data, error);
+  },
+  async create(q: Omit<MockQuestion, 'id' | 'created_at' | 'updated_at'>): Promise<MockQuestion> {
+    const { data, error } = await supabase.from('mock_questions').insert(q).select().single();
+    return ok(data, error);
+  },
+  async update(id: string, q: Partial<Omit<MockQuestion, 'id' | 'created_at' | 'updated_at'>>): Promise<MockQuestion> {
+    const { data, error } = await supabase.from('mock_questions').update(q).eq('id', id).select().single();
+    return ok(data, error);
+  },
+  async remove(id: string): Promise<void> {
+    const { error } = await supabase.from('mock_questions').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+};
+
+// ─── Topic Maps ───────────────────────────────────────────────
+
+import type { TopicMap } from './adminApiTypes';
+
+export const mapsApi = {
+  async list(): Promise<TopicMap[]> {
+    const { data, error } = await supabase.from('topic_maps').select('*').order('topic_id').order('sort_order');
+    return ok(data, error);
+  },
+  async listByTopic(topicId: string): Promise<TopicMap[]> {
+    const { data, error } = await supabase.from('topic_maps').select('*').eq('topic_id', topicId).order('sort_order');
+    return ok(data, error);
+  },
+  async create(payload: Omit<TopicMap, 'id' | 'created_at'>): Promise<TopicMap> {
+    const { data, error } = await supabase.from('topic_maps').insert(payload).select().single();
+    return ok(data, error);
+  },
+  async update(id: string, payload: Partial<Omit<TopicMap, 'id' | 'created_at'>>): Promise<TopicMap> {
+    const { data, error } = await supabase.from('topic_maps').update(payload).eq('id', id).select().single();
+    return ok(data, error);
+  },
+  async remove(id: string): Promise<void> {
+    const { error } = await supabase.from('topic_maps').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+};
+
+// ─── Storage ──────────────────────────────────────────────────
+
+const BUCKET = 'krackit-assets';
+
+async function ensureBucket() {
+  await supabase.storage.createBucket(BUCKET, { public: true, fileSizeLimit: 10485760 }).catch(() => {});
+}
+
+async function uploadFile(folder: string, file: File): Promise<string> {
+  await ensureBucket();
+  const ext = file.name.split('.').pop()?.toLowerCase() ?? 'jpg';
+  const path = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+  const { error } = await supabase.storage.from(BUCKET).upload(path, file, {
+    upsert: false,
+    contentType: file.type,
+  });
+  if (error) {
+    if (error.message.toLowerCase().includes('bucket') || error.message.toLowerCase().includes('not found')) {
+      throw new Error('Storage bucket not found. Go to Supabase Dashboard → Storage and create a public bucket named "krackit-assets".');
+    }
+    throw new Error(error.message);
+  }
+  const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
+  return data.publicUrl;
+}
+
+export const storageApi = {
+  uploadMapImage:  (file: File) => uploadFile('maps', file),
+  uploadExamImage: (file: File) => uploadFile('exams', file),
+
+  async deleteByUrl(publicUrl: string): Promise<void> {
+    // Extract the path segment after the bucket name
+    const marker = `/${BUCKET}/`;
+    const idx = publicUrl.indexOf(marker);
+    if (idx === -1) return;
+    const path = publicUrl.slice(idx + marker.length);
+    await supabase.storage.from(BUCKET).remove([path]);
+  },
+};
+
 // ─── Load everything in one shot (replaces loadStore()) ──────
 
 export async function loadAdminData() {
   const [
-    exams, subjects, chapters, topics, tricks, notes, news,
-    users, ratings, issues, notifications, trickOfDay, pricing, about,
+    exams, subjects, chapters, topics, tricks, tricksHindi, notes, news,
+    users, ratings, issues, notifications, trickOfDay, pricing, about, mockQuestions, subscriptions, maps,
   ] = await Promise.all([
     examsApi.list(),
     subjectsApi.list(),
     chaptersApi.list(),
     topicsApi.list(),
     tricksApi.list(),
+    tricksHindiApi.list().catch(() => [] as Trick[]),
     notesApi.list(),
     newsApi.list(),
     usersApi.list(),
@@ -418,6 +539,9 @@ export async function loadAdminData() {
     trickOfDayApi.list(),
     pricingApi.list(),
     aboutApi.get(),
+    mockQuestionsApi.list().catch(() => [] as MockQuestion[]),
+    subscriptionsApi.list().catch(() => [] as Subscription[]),
+    mapsApi.list().catch(() => [] as TopicMap[]),
   ]);
-  return { exams, subjects, chapters, topics, tricks, notes, news, users, ratings, issues, notifications, trickOfDay, pricing, about };
+  return { exams, subjects, chapters, topics, tricks, tricksHindi, notes, news, users, ratings, issues, notifications, trickOfDay, pricing, about, mockQuestions, subscriptions, maps };
 }

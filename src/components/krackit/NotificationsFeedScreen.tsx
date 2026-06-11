@@ -1,7 +1,9 @@
 import { ArrowLeft, Bell, BellOff, CalendarCheck, FileText, Megaphone, Star, Zap, Lightbulb, Trophy, Clock } from "lucide-react";
 import { useData } from "@/lib/DataContext";
+import { notificationsApi } from "@/lib/mobileApi";
+import type { ExamNews } from "@/lib/krackit-data";
 import { cn } from "@/lib/utils";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type AlertType = "streak" | "goal" | "achievement" | "reminder" | "tip" | "exam_news";
 
@@ -22,27 +24,6 @@ const STATIC_ALERTS: AppAlert[] = [
   { id: "a4", type: "tip",         title: "Spaced repetition reminder", body: "You last reviewed 'Mughal Emperors' 3 days ago. Time to revisit and lock it in.",              time: "2 days ago",read: true  },
   { id: "a5", type: "reminder",    title: "UPSC Prelims — 42 days left",body: "You've covered 18% of UPSC topics. Pick up the pace — aim for 2–3 chapters this week.",       time: "3 days ago",read: true  },
 ];
-
-function loadAdminNotifications(): AppAlert[] {
-  try {
-    const raw = localStorage.getItem("krackit_admin_store");
-    if (!raw) return [];
-    const store = JSON.parse(raw) as {
-      notifications?: { id: string; title: string; body: string; type: string; status: string; scheduledAt: string }[];
-    };
-    return (store.notifications ?? [])
-      .filter((n) => n.status === "sent")
-      .map((n, i) => ({
-        id: `admin-${n.id ?? i}`,
-        type: (n.type as AlertType) ?? "tip",
-        title: n.title,
-        body: n.body,
-        time: n.scheduledAt?.slice(0, 10) ?? "Recently",
-        read: false,
-        fromAdmin: true,
-      }));
-  } catch { return []; }
-}
 
 const tagColors: Record<string, string> = {
   Notification: "text-amber-400 bg-amber-400/10",
@@ -69,16 +50,84 @@ const alertIconColors: Record<AlertType, string> = {
   exam_news:   "bg-rose-400/15 text-rose-400",
 };
 
+function formatTime(dateStr: string): string {
+  try {
+    const d = new Date(dateStr);
+    const now = Date.now();
+    const diff = now - d.getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    const days = Math.floor(hrs / 24);
+    if (days === 1) return "Yesterday";
+    if (days < 7) return `${days} days ago`;
+    return d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+  } catch { return "Recently"; }
+}
+
+function parseExamBody(body: string): { text: string; tag: string; accent: string } {
+  try {
+    const p = JSON.parse(body);
+    if (p && typeof p === "object" && p.text) {
+      return { text: p.text, tag: p.tag ?? "Notification", accent: p.accent ?? "from-amber-500/20 to-amber-900/5" };
+    }
+  } catch {}
+  return { text: body, tag: "Notification", accent: "from-amber-500/20 to-amber-900/5" };
+}
+
 export function NotificationsFeedScreen({ onBack }: { onBack: () => void }) {
-  const { examNews } = useData();
+  const { examNews, exams } = useData();
   const [tab, setTab] = useState<"alerts" | "news">("alerts");
-  const adminAlerts = useMemo(loadAdminNotifications, []);
-  const [alerts, setAlerts] = useState<AppAlert[]>(() => [...adminAlerts, ...STATIC_ALERTS]);
+  const [alerts, setAlerts] = useState<AppAlert[]>(STATIC_ALERTS);
+  const [adminNews, setAdminNews] = useState<ExamNews[]>([]);
+
+  useEffect(() => {
+    notificationsApi.getFeed(50).then((items) => {
+      const all = items as any[];
+      // Regular alerts (non exam_news type)
+      const adminAlerts: AppAlert[] = all
+        .filter((n) => n.type !== "exam_news")
+        .map((n) => ({
+          id: `admin-${n.id}`,
+          type: (n.type as AlertType) ?? "tip",
+          title: n.title,
+          body: n.body,
+          time: formatTime(n.sent_at ?? n.scheduled_at ?? ""),
+          read: false,
+          fromAdmin: true,
+        }));
+      setAlerts([...adminAlerts, ...STATIC_ALERTS]);
+
+      // Exam news from admin push_notifications
+      const examNewsItems: ExamNews[] = all
+        .filter((n) => n.type === "exam_news")
+        .map((n) => {
+          const { text, tag, accent } = parseExamBody(n.body);
+          const matchedExam = exams.find((e) => e.id === n.target_exam_id);
+          return {
+            id: `admin-news-${n.id}`,
+            exam: matchedExam?.short ?? "General",
+            title: n.title,
+            date: formatTime(n.sent_at ?? n.scheduled_at ?? ""),
+            tag: tag as ExamNews["tag"],
+            accent,
+          };
+        });
+      setAdminNews(examNewsItems);
+    }).catch(console.error);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Merge DB exam_news + admin exam_news (admin news first since they're newest)
+  const allNews = useMemo(() => [...adminNews, ...examNews], [adminNews, examNews]);
 
   const unreadCount = alerts.filter((a) => !a.read).length;
-
-  const markAllRead = () => setAlerts((prev) => prev.map((a) => ({ ...a, read: true })));
   const markRead = (id: string) => setAlerts((prev) => prev.map((a) => a.id === id ? { ...a, read: true } : a));
+
+  // Auto-mark all alerts read when screen opens
+  useEffect(() => {
+    setAlerts((prev) => prev.map((a) => ({ ...a, read: true })));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="flex-1 overflow-y-auto pb-6">
@@ -87,22 +136,13 @@ export function NotificationsFeedScreen({ onBack }: { onBack: () => void }) {
           <button onClick={onBack} className="flex h-10 w-10 items-center justify-center rounded-full bg-surface text-foreground">
             <ArrowLeft className="h-5 w-5" />
           </button>
-          {unreadCount > 0 && (
-            <button onClick={markAllRead} className="text-xs font-medium text-gold">
-              Mark all read
-            </button>
-          )}
         </div>
         <div className="mt-4 flex items-end justify-between">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Notifications</h1>
-            {unreadCount > 0 && (
-              <p className="mt-0.5 text-sm text-muted-foreground">{unreadCount} unread</p>
-            )}
           </div>
         </div>
 
-        {/* Tabs */}
         <div className="mt-4 flex rounded-2xl bg-surface p-1 gap-1">
           {(["alerts", "news"] as const).map((t) => (
             <button
@@ -134,7 +174,7 @@ export function NotificationsFeedScreen({ onBack }: { onBack: () => void }) {
             </div>
           ) : (
             alerts.map((alert) => {
-              const Icon = alertIcons[alert.type];
+              const Icon = alertIcons[alert.type] ?? FileText;
               return (
                 <button
                   key={alert.id}
@@ -143,10 +183,10 @@ export function NotificationsFeedScreen({ onBack }: { onBack: () => void }) {
                     "flex w-full items-start gap-3 rounded-2xl border p-4 text-left transition-colors",
                     alert.read
                       ? "border-border bg-surface opacity-70"
-                      : "border-gold/20 bg-gradient-to-br from-gold/8 to-surface"
+                      : "border-gold/20 bg-linear-to-br from-gold/8 to-surface"
                   )}
                 >
-                  <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", alertIconColors[alert.type])}>
+                  <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", alertIconColors[alert.type] ?? "bg-surface-2 text-muted-foreground")}>
                     <Icon className="h-4 w-4" />
                   </div>
                   <div className="min-w-0 flex-1">
@@ -174,51 +214,33 @@ export function NotificationsFeedScreen({ onBack }: { onBack: () => void }) {
       {tab === "news" && (
         <div className="space-y-3 px-5 pt-2">
           <p className="text-xs text-muted-foreground">Latest updates from exam authorities</p>
-          {examNews.map((n) => (
-            <article
-              key={n.id}
-              className={`rounded-2xl border border-border bg-gradient-to-br ${n.accent} p-4`}
-            >
-              <div className="flex items-center justify-between mb-3">
-                <span className="rounded-full bg-background/60 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-gold ring-1 ring-gold/30">
-                  {n.exam}
-                </span>
-                <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider", tagColors[n.tag] ?? "text-muted-foreground bg-muted")}>
-                  {n.tag}
-                </span>
-              </div>
-              <p className="text-sm font-semibold leading-snug text-foreground">{n.title}</p>
-              <div className="mt-3 flex items-center gap-2 text-[11px] text-muted-foreground">
-                <CalendarCheck className="h-3 w-3" />
-                <span>{n.date}</span>
-              </div>
-            </article>
-          ))}
-
-          {/* Extra placeholder alerts that could come from a real API */}
-          {[
-            { exam: "CAT", title: "CAT 2026 registration window opens July 31", date: "Jul 31", tag: "Notification" as const, accent: "from-violet-500/20 to-violet-900/5" },
-            { exam: "JEE", title: "JEE Advanced 2026 eligibility criteria revised", date: "Aug 05", tag: "Notification" as const, accent: "from-sky-500/20 to-sky-900/5" },
-          ].map((n, i) => (
-            <article
-              key={`extra-${i}`}
-              className={`rounded-2xl border border-border bg-gradient-to-br ${n.accent} p-4`}
-            >
-              <div className="flex items-center justify-between mb-3">
-                <span className="rounded-full bg-background/60 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-gold ring-1 ring-gold/30">
-                  {n.exam}
-                </span>
-                <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider", tagColors[n.tag] ?? "text-muted-foreground bg-muted")}>
-                  {n.tag}
-                </span>
-              </div>
-              <p className="text-sm font-semibold leading-snug text-foreground">{n.title}</p>
-              <div className="mt-3 flex items-center gap-2 text-[11px] text-muted-foreground">
-                <CalendarCheck className="h-3 w-3" />
-                <span>{n.date}</span>
-              </div>
-            </article>
-          ))}
+          {allNews.length === 0 ? (
+            <div className="mt-10 flex flex-col items-center gap-3 rounded-3xl border border-dashed border-border p-10 text-center">
+              <Megaphone className="h-8 w-8 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">No exam news yet.</p>
+            </div>
+          ) : (
+            allNews.map((n) => (
+              <article
+                key={n.id}
+                className={`rounded-2xl border border-border bg-linear-to-br ${n.accent} p-4`}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <span className="rounded-full bg-background/60 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-gold ring-1 ring-gold/30">
+                    {n.exam}
+                  </span>
+                  <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider", tagColors[n.tag] ?? "text-muted-foreground bg-muted")}>
+                    {n.tag}
+                  </span>
+                </div>
+                <p className="text-sm font-semibold leading-snug text-foreground">{n.title}</p>
+                <div className="mt-3 flex items-center gap-2 text-[11px] text-muted-foreground">
+                  <CalendarCheck className="h-3 w-3" />
+                  <span>{n.date}</span>
+                </div>
+              </article>
+            ))
+          )}
         </div>
       )}
     </div>

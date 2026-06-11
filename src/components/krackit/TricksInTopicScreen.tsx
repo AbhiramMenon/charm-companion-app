@@ -80,6 +80,7 @@ export function TricksInTopicScreen({
   mastered,
   openedTricks,
   isLocked,
+  medium,
   toggleSave,
   openTrick,
   onBack,
@@ -91,12 +92,13 @@ export function TricksInTopicScreen({
   mastered: Set<string>;
   openedTricks: Set<string>;
   isLocked: boolean;
+  medium?: string;
   toggleSave: (id: string) => void;
   openTrick: (t: Trick, list: Trick[]) => void;
   onBack: () => void;
   onOpenSubscription: () => void;
 }) {
-  const { tricks } = useData();
+  const { tricks, translate } = useData();
   const list = tricks.filter((t) => t.topic === topic.id);
   const fallback = list.length ? list : tricks.slice(0, 3);
 
@@ -146,8 +148,8 @@ export function TricksInTopicScreen({
         </button>
         <div className="mt-4">
           <p className="text-[11px] font-semibold uppercase tracking-widest text-gold">Topic</p>
-          <h1 className="mt-1 text-xl font-bold text-foreground">{topic.name}</h1>
-          <p className="mt-0.5 text-xs text-muted-foreground">{chapter.name}</p>
+          <h1 className="mt-1 text-xl font-bold text-foreground">{translate(topic.name)}</h1>
+          <p className="mt-0.5 text-xs text-muted-foreground">{translate(chapter.name)}</p>
         </div>
 
         {/* Progress */}

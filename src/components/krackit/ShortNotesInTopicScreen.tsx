@@ -28,7 +28,7 @@ export function ShortNotesInTopicScreen({
   onBack: () => void;
   onOpenSubscription: () => void;
 }) {
-  const { shortNotes } = useData();
+  const { shortNotes, translate } = useData();
   const topicDefaultNotes = shortNotes.filter((n) => n.topicId === topic.id);
   const topicCustomNotes = customNotes.filter((n) => n.topicId === topic.id);
 
@@ -64,8 +64,8 @@ export function ShortNotesInTopicScreen({
         </button>
         <div className="mt-4">
           <p className="text-[11px] font-semibold uppercase tracking-widest text-gold">Short Notes</p>
-          <h1 className="mt-1 text-xl font-bold text-foreground">{topic.name}</h1>
-          <p className="mt-0.5 text-xs text-muted-foreground">{chapter.name}</p>
+          <h1 className="mt-1 text-xl font-bold text-foreground">{translate(topic.name)}</h1>
+          <p className="mt-0.5 text-xs text-muted-foreground">{translate(chapter.name)}</p>
         </div>
 
         <div className="mt-3 flex items-center justify-between">
@@ -159,8 +159,8 @@ export function ShortNotesInTopicScreen({
             <div key={note.id} className="rounded-xl border border-border bg-surface p-4">
               <div className="flex items-start gap-2">
                 <div className="min-w-0 flex-1">
-                  <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{note.title}</p>
-                  <p className="text-sm leading-relaxed text-foreground/90">{note.content}</p>
+                  <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{translate(note.title)}</p>
+                  <p className="text-sm leading-relaxed text-foreground/90">{translate(note.content)}</p>
                 </div>
                 <button
                   onClick={() => onToggleSaveNote(note.id)}

@@ -24,6 +24,9 @@ export type Exam = {
   subjects: number;
   tricks: number;
   accent: string;
+  examDate?: string;
+  medium?: 'hindi' | 'english';
+  imageUrl?: string;
 };
 
 export type Subject = {
@@ -50,6 +53,14 @@ export type ShortNote = {
   title: string;
   content: string;
   isCustom?: boolean;
+};
+
+export type TopicMap = {
+  id: string;
+  topicId: string;
+  title: string;
+  imageUrl: string;
+  sortOrder: number;
 };
 
 export type ExamNews = {

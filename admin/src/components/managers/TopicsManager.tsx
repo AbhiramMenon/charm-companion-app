@@ -5,6 +5,7 @@ import { uid, type Topic } from "../../lib/data";
 import { topicsApi } from "../../lib/adminApi";
 import { Modal, Field, Input, Select, SaveBtn, DeleteConfirm } from "../Modal";
 import { Pagination, usePagination } from "../Pagination";
+import { useSort, Th } from "../Sort";
 
 const empty = (chapterId = ""): Omit<Topic, "id"> => ({ name: "", chapterId, tricksCount: 0, icon: "" });
 
@@ -34,7 +35,8 @@ export function TopicsManager() {
     if (filterExam    && !filterSubjectOpts.some((s) => filterChapterOpts.some((c) => c.subjectId === s.id && c.id === t.chapterId))) return false;
     return true;
   });
-  const { page, setPage, pageItems: filtered, totalPages } = usePagination(allFiltered, 15);
+  const { sortField, sortDir, toggle, sorted } = useSort(allFiltered as unknown as Record<string, unknown>[], "name");
+  const { page, setPage, pageItems: filtered, totalPages } = usePagination(sorted as unknown as typeof allFiltered, 15);
 
   // Modal options
   const mSubjectOpts = store.subjects.filter((s) => !mExam    || s.examId    === mExam);
@@ -136,10 +138,10 @@ export function TopicsManager() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-[var(--border)] text-[var(--muted-foreground)] text-xs uppercase tracking-wider">
-              <th className="px-5 py-3 text-left">Topic</th>
-              <th className="px-5 py-3 text-left">Exam / Chapter</th>
-              <th className="px-5 py-3 text-right">Tricks</th>
-              <th className="px-5 py-3 text-right">Notes</th>
+              <Th field="name" label="Topic" sortField={sortField} sortDir={sortDir} onToggle={toggle} />
+              <th className="px-5 py-3 text-left text-[var(--muted-foreground)] text-xs uppercase tracking-wider">Exam / Chapter</th>
+              <th className="px-5 py-3 text-right text-[var(--muted-foreground)] text-xs uppercase tracking-wider">Tricks</th>
+              <th className="px-5 py-3 text-right text-[var(--muted-foreground)] text-xs uppercase tracking-wider">Notes</th>
               <th className="px-5 py-3" />
             </tr>
           </thead>

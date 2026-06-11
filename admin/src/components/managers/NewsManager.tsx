@@ -5,6 +5,7 @@ import { uid, type ExamNews, type NewsTag } from "../../lib/data";
 import { newsApi } from "../../lib/adminApi";
 import { Modal, Field, Input, Select, SaveBtn, DeleteConfirm } from "../Modal";
 import { Pagination, usePagination } from "../Pagination";
+import { useSort, Th } from "../Sort";
 
 const TAGS: NewsTag[] = ["Notification", "Admit Card", "Result", "Exam Date"];
 const TAG_COLOR: Record<NewsTag, string> = {
@@ -27,10 +28,13 @@ const ACCENTS = [
 
 export function NewsManager() {
   const { store, refresh } = useStore();
+  // Helper: display name for an exam ID stored in news.exam
+  const examName = (id: string) => store.exams.find((e) => e.id === id)?.name ?? id;
   const [modal, setModal] = useState<"add" | ExamNews | null>(null);
   const [delTarget, setDelTarget] = useState<ExamNews | null>(null);
   const [form, setForm] = useState(empty());
-  const { page, setPage, pageItems, totalPages } = usePagination(store.news, 15);
+  const { sortField, sortDir, toggle, sorted } = useSort(store.news as unknown as Record<string, unknown>[], "date", "desc");
+  const { page, setPage, pageItems, totalPages } = usePagination(sorted as unknown as typeof store.news, 15);
 
   const openAdd = () => { setForm(empty()); setModal("add"); };
   const openEdit = (n: ExamNews) => { setForm({ exam: n.exam, title: n.title, date: n.date, tag: n.tag, accent: n.accent }); setModal(n); };
@@ -72,17 +76,17 @@ export function NewsManager() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-[var(--border)] text-[var(--muted-foreground)] text-xs uppercase tracking-wider">
-              <th className="px-5 py-3 text-left">Exam</th>
-              <th className="px-5 py-3 text-left">Title</th>
-              <th className="px-5 py-3 text-left">Date</th>
-              <th className="px-5 py-3 text-left">Tag</th>
+              <Th field="exam"  label="Exam"  sortField={sortField} sortDir={sortDir} onToggle={toggle} />
+              <Th field="title" label="Title" sortField={sortField} sortDir={sortDir} onToggle={toggle} />
+              <Th field="date"  label="Date"  sortField={sortField} sortDir={sortDir} onToggle={toggle} />
+              <Th field="tag"   label="Tag"   sortField={sortField} sortDir={sortDir} onToggle={toggle} />
               <th className="px-5 py-3" />
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--border)]">
             {pageItems.map((item) => (
               <tr key={item.id} className="hover:bg-[var(--surface-2)] transition-colors">
-                <td className="px-5 py-3 font-bold text-[var(--gold)]">{item.exam}</td>
+                <td className="px-5 py-3 font-bold text-[var(--gold)]">{examName(item.exam)}</td>
                 <td className="px-5 py-3 text-[var(--foreground)] max-w-xs truncate">{item.title}</td>
                 <td className="px-5 py-3 text-[var(--muted-foreground)] whitespace-nowrap">{item.date}</td>
                 <td className="px-5 py-3">
@@ -105,7 +109,14 @@ export function NewsManager() {
       {modal && (
         <Modal title={modal === "add" ? "Add News Item" : "Edit News Item"} onClose={() => setModal(null)}>
           <form onSubmit={handleSave} className="space-y-4">
-            <Field label="Exam Short Name"><Input value={form.exam} onChange={(e) => set("exam", e.target.value)} placeholder="UPSC" required maxLength={10} /></Field>
+            <Field label="Exam">
+              <Select value={form.exam} onChange={(e) => set("exam", e.target.value)} required>
+                <option value="">— Select exam —</option>
+                {store.exams.map((ex) => (
+                  <option key={ex.id} value={ex.id}>{ex.name} ({ex.short})</option>
+                ))}
+              </Select>
+            </Field>
             <Field label="Headline"><Input value={form.title} onChange={(e) => set("title", e.target.value)} placeholder="Prelims 2026 notification released" required /></Field>
             <Field label="Date"><Input value={form.date} onChange={(e) => set("date", e.target.value)} placeholder="Feb 14" required /></Field>
             <Field label="Tag">

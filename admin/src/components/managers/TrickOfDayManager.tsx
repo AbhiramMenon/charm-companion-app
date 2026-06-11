@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Pencil, Trash2, CalendarDays, Star, Lightbulb } from "lucide-react";
+import { Plus, Pencil, Trash2, CalendarDays, Star, Lightbulb, ChevronUp, ChevronDown } from "lucide-react";
 import { useStore } from "../../App";
 import { type TrickOfDay } from "../../lib/data";
 import { trickOfDayApi } from "../../lib/adminApi";
@@ -9,16 +9,26 @@ import { Pagination, usePagination } from "../Pagination";
 const MAX_PER_DAY = 3;
 const today = () => new Date().toISOString().slice(0, 10);
 
-const empty = (date: string = today()): Omit<TrickOfDay, "id"> => ({ trickId: "", date, note: "" });
+const ACCENT_OPTIONS = [
+  { value: "gold",    label: "Gold",    bg: "#2a1a07", shimmer: "#D4A24C" },
+  { value: "rose",    label: "Rose",    bg: "#2a0a12", shimmer: "#fb7185" },
+  { value: "emerald", label: "Emerald", bg: "#082a12", shimmer: "#34d399" },
+  { value: "sky",     label: "Sky",     bg: "#082028", shimmer: "#38bdf8" },
+  { value: "violet",  label: "Violet",  bg: "#120a28", shimmer: "#a78bfa" },
+  { value: "cyan",    label: "Cyan",    bg: "#082428", shimmer: "#22d3ee" },
+];
+
+const empty = (date: string = today()): Omit<TrickOfDay, "id"> => ({ trickId: "", date, note: "", accent: "gold" } as any);
 
 export function TrickOfDayManager() {
   const { store, refresh } = useStore();
   const [modal, setModal]   = useState<"add" | TrickOfDay | null>(null);
   const [delTarget, setDel] = useState<TrickOfDay | null>(null);
   const [form, setForm]     = useState(empty());
+  const [dateDir, setDateDir] = useState<"desc" | "asc">("desc");
 
   const openAdd  = (date?: string) => { setForm(empty(date)); setModal("add"); };
-  const openEdit = (t: TrickOfDay) => { setForm({ trickId: t.trickId, date: t.date, note: t.note ?? "" }); setModal(t); };
+  const openEdit = (t: TrickOfDay) => { setForm({ trickId: t.trickId, date: t.date, note: t.note ?? "", accent: t.accent ?? "gold" } as any); setModal(t); };
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }));
 
   // Count tricks per date
@@ -28,12 +38,13 @@ export function TrickOfDayManager() {
     e.preventDefault();
     if (!form.trickId) { alert("Please select a trick."); return; }
     try {
+      const accent = (form as any).accent || "gold";
       if (modal === "add") {
         const existing = countForDate(form.date);
         if (existing >= MAX_PER_DAY) { alert(`Maximum ${MAX_PER_DAY} tricks per day already scheduled.`); return; }
-        await trickOfDayApi.create(form.trickId, form.date, form.note || undefined);
+        await trickOfDayApi.create(form.trickId, form.date, form.note || undefined, accent);
       } else if (modal) {
-        await trickOfDayApi.update((modal as TrickOfDay).id, form.trickId, form.note || undefined);
+        await trickOfDayApi.update((modal as TrickOfDay).id, form.trickId, form.note || undefined, accent);
       }
       await refresh();
     } catch (err: any) { alert(err.message); return; }
@@ -47,7 +58,9 @@ export function TrickOfDayManager() {
   };
 
   // Group entries by date
-  const sorted = [...store.trickOfDay].sort((a, b) => b.date.localeCompare(a.date));
+  const sorted = [...store.trickOfDay].sort((a, b) =>
+    dateDir === "desc" ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date)
+  );
   const dateGroups = Array.from(
     sorted.reduce((map, entry) => {
       if (!map.has(entry.date)) map.set(entry.date, []);
@@ -70,9 +83,15 @@ export function TrickOfDayManager() {
             {store.trickOfDay.length} entries · up to {MAX_PER_DAY} tricks per day shown in the mobile app
           </p>
         </div>
-        <button onClick={() => openAdd()} className="flex items-center gap-2 rounded-xl gold-gradient px-4 py-2.5 text-sm font-bold text-[#1a1410]">
-          <Plus className="h-4 w-4" /> Add Trick
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setDateDir((d) => d === "desc" ? "asc" : "desc")}
+            className="flex items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors">
+            Date {dateDir === "desc" ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
+          </button>
+          <button onClick={() => openAdd()} className="flex items-center gap-2 rounded-xl gold-gradient px-4 py-2.5 text-sm font-bold text-[#1a1410]">
+            <Plus className="h-4 w-4" /> Add Trick
+          </button>
+        </div>
       </div>
 
       {/* Today's featured tricks */}
@@ -220,6 +239,31 @@ export function TrickOfDayManager() {
                 </div>
               ) : null;
             })()}
+            <Field label="Card Background Color">
+              <div className="flex flex-wrap gap-2 mt-1">
+                {ACCENT_OPTIONS.map((opt) => {
+                  const current = (form as any).accent ?? "gold";
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => set("accent" as any, opt.value as any)}
+                      className="flex items-center gap-2 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all"
+                      style={{
+                        background: opt.bg,
+                        borderColor: current === opt.value ? opt.shimmer : "rgba(255,255,255,0.15)",
+                        color: opt.shimmer,
+                        outline: current === opt.value ? `2px solid ${opt.shimmer}` : "none",
+                        outlineOffset: "2px",
+                      }}
+                    >
+                      <span className="h-3 w-3 rounded-full" style={{ background: opt.shimmer }} />
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </Field>
             <Field label="Admin Note (optional)">
               <Textarea value={form.note ?? ""} onChange={(e) => set("note", e.target.value)} rows={2} placeholder="Great for UPSC History prep" />
             </Field>

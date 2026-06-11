@@ -152,10 +152,14 @@ export function AnalyticsManager() {
   }, [store.users]);
 
   const usersByExam = useMemo(() => {
-    return store.exams.map((ex) => ({
-      label: ex.short,
-      value: store.users.filter((u) => u.subscribedExams.includes(ex.id)).length,
-    }));
+    return store.exams.map((ex) => {
+      const uniqueUsers = new Set(
+        store.subscriptions
+          .filter((s) => s.examId === ex.id && s.status === "active" && s.planType === "exam_pack")
+          .map((s) => s.userId)
+      ).size;
+      return { label: ex.short, value: uniqueUsers };
+    });
   }, [store]);
 
   const activeUsers = useMemo(() => {
@@ -194,31 +198,35 @@ export function AnalyticsManager() {
     return buckets.map((b) => ({ label: b.label, value: b.count }));
   }, [store.users]);
 
-  // ── Revenue stats ──────────────────────────────────────────────────────────
-  const PRICE_MAP: Record<string, number> = { monthly: 199, sixmonths: 999, yearly: 1699 };
+  // ── Revenue stats (from actual subscriptions table) ────────────────────────
   const revenueByPlan = useMemo(() => {
-    const counts: Record<string, number> = { monthly: 0, sixmonths: 0, yearly: 0 };
+    const activeSubs = store.subscriptions.filter((s) => s.status === "active" && s.planType === "exam_pack");
+    const counts = { monthly: 0, sixmonths: 0, yearly: 0 };
+    const totals = { monthly: 0, sixmonths: 0, yearly: 0 };
     let total = 0;
-    store.users.filter((u) => u.billingCycle).forEach((u) => {
-      counts[u.billingCycle!] = (counts[u.billingCycle!] ?? 0) + 1;
-      total += PRICE_MAP[u.billingCycle!] ?? 0;
+    activeSubs.forEach((s) => {
+      const cycle = s.billingCycle as keyof typeof counts;
+      counts[cycle] = (counts[cycle] ?? 0) + 1;
+      const amt = s.amountPaise / 100;
+      totals[cycle] = (totals[cycle] ?? 0) + amt;
+      total += amt;
     });
     return {
       plans: [
-        { label: "Monthly",    value: counts.monthly,   color: "#60a5fa" },
-        { label: "6 Months",   value: counts.sixmonths, color: "#a78bfa" },
-        { label: "Yearly",     value: counts.yearly,    color: "#D4A24C" },
+        { label: "Monthly",  value: counts.monthly,   color: "#60a5fa" },
+        { label: "6 Months", value: counts.sixmonths, color: "#a78bfa" },
+        { label: "Yearly",   value: counts.yearly,    color: "#D4A24C" },
       ],
       total,
     };
-  }, [store.users]);
+  }, [store.subscriptions]);
 
   const revenueByExam = useMemo(() => {
     return store.exams.map((ex) => {
-      const rev = store.users
-        .filter((u) => u.subscribedExams.includes(ex.id) && u.billingCycle)
-        .reduce((s, u) => s + (PRICE_MAP[u.billingCycle!] ?? 0), 0);
-      return { label: ex.short, value: rev };
+      const rev = store.subscriptions
+        .filter((s) => s.examId === ex.id && s.status === "active" && s.planType === "exam_pack")
+        .reduce((s, sub) => s + sub.amountPaise / 100, 0);
+      return { label: ex.short, value: Math.round(rev) };
     });
   }, [store]);
 
@@ -257,13 +265,17 @@ export function AnalyticsManager() {
     { label: "Draft",     value: store.notifications.filter((n) => n.status === "draft").length,     color: "#94a3b8" },
   ], [store.notifications]);
 
+  const paidUserCount = useMemo(() =>
+    new Set(store.subscriptions.filter((s) => s.status === "active" && s.planType === "exam_pack").map((s) => s.userId)).size,
+  [store.subscriptions]);
+
   const kpis = [
     { label: "Total Users",    value: store.users.length },
-    { label: "Paid Users",     value: store.users.filter((u) => u.tier === "Exam Pack").length },
+    { label: "Paid Users",     value: paidUserCount },
     { label: "Total Tricks",   value: store.tricks.length },
     { label: "Total Ratings",  value: store.ratings.reduce((s, r) => s + r.totalRatings, 0).toLocaleString() },
     { label: "Open Issues",    value: store.issues.filter((i) => i.status === "open").length },
-    { label: "Total Revenue",  value: `₹${revenueByPlan.total.toLocaleString()}` },
+    { label: "Total Revenue",  value: `₹${Math.round(revenueByPlan.total).toLocaleString("en-IN")}` },
   ];
 
   return (

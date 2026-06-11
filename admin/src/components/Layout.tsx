@@ -1,10 +1,10 @@
 import { useRef, useState } from "react";
 import {
-  BookOpen, BookText, ChevronRight, Download, FileText, Upload,
+  BookOpen, BookText, ChevronRight, ChevronDown, Download, FileText, Upload,
   GraduationCap, LayoutDashboard, Lightbulb, LogOut, Star,
-  Menu, Newspaper, StickyNote, X, Users, IndianRupee,
-  MessageSquare, Bell, CalendarDays, TrendingUp, BarChart2,
-  Info, Wallet,
+  Map, Menu, Newspaper, StickyNote, X, Users, IndianRupee,
+  MessageSquare, Bell, CalendarDays, BarChart2,
+  Info, Wallet, ClipboardList,
 } from "lucide-react";
 import type { Page } from "../App";
 import { currentUser, logout } from "../lib/auth";
@@ -25,8 +25,10 @@ const NAV_GROUPS: NavGroup[] = [
       { id: "topics",     label: "Topics",       icon: FileText        },
       { id: "tricks",     label: "Tricks",       icon: Lightbulb       },
       { id: "notes",      label: "Short Notes",  icon: StickyNote      },
+      { id: "maps",       label: "Topic Maps",   icon: Map             },
       { id: "news",       label: "Exam News",    icon: Newspaper       },
       { id: "trickofday", label: "Trick of Day", icon: CalendarDays    },
+      { id: "mocktests",  label: "Mock Tests",   icon: ClipboardList   },
     ],
   },
   {
@@ -65,6 +67,9 @@ export function Layout({
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [importing, setImporting]     = useState(false);
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+  const toggleGroup = (label: string) =>
+    setCollapsedGroups((prev) => ({ ...prev, [label]: !prev[label] }));
   const fileRef = useRef<HTMLInputElement>(null);
   const { store } = useStore();
   const user = currentUser();
@@ -101,31 +106,49 @@ export function Layout({
       </div>
 
       {/* Nav groups */}
-      <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-4">
-        {NAV_GROUPS.map((group) => (
-          <div key={group.label}>
-            <p className="px-3 mb-1 text-[10px] font-bold uppercase tracking-widest text-[var(--muted-foreground)]/60">{group.label}</p>
-            <div className="space-y-0.5">
-              {group.items.map(({ id, label, icon: Icon }) => {
-                const active = page === id;
-                return (
-                  <button
-                    key={id}
-                    onClick={() => { onNavigate(id); setSidebarOpen(false); }}
-                    className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
-                      active
-                        ? "bg-[var(--gold)]/15 text-[var(--gold)]"
-                        : "text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
-                    }`}
-                  >
-                    <Icon className="h-4 w-4 shrink-0" />
-                    {label}
-                  </button>
-                );
-              })}
+      <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-1">
+        {NAV_GROUPS.map((group) => {
+          const collapsed = collapsedGroups[group.label];
+          const hasActive = group.items.some((i) => i.id === page);
+          return (
+            <div key={group.label}>
+              <button
+                onClick={() => toggleGroup(group.label)}
+                className="flex w-full items-center justify-between px-3 py-1.5 mb-0.5 rounded-lg hover:bg-[var(--surface-2)] transition-colors group"
+              >
+                <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted-foreground)]/70 group-hover:text-[var(--muted-foreground)]">
+                  {group.label}
+                  {hasActive && !collapsed && <span className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-[var(--gold)] align-middle" />}
+                </p>
+                {collapsed
+                  ? <ChevronRight className="h-3 w-3 text-[var(--muted-foreground)]/50" />
+                  : <ChevronDown  className="h-3 w-3 text-[var(--muted-foreground)]/50" />
+                }
+              </button>
+              {!collapsed && (
+                <div className="space-y-0.5 mb-2">
+                  {group.items.map(({ id, label, icon: Icon }) => {
+                    const active = page === id;
+                    return (
+                      <button
+                        key={id}
+                        onClick={() => { onNavigate(id); setSidebarOpen(false); }}
+                        className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+                          active
+                            ? "bg-[var(--gold)]/15 text-[var(--gold)]"
+                            : "text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
+                        }`}
+                      >
+                        <Icon className="h-4 w-4 shrink-0" />
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </nav>
 
       {/* Export / Import / user */}

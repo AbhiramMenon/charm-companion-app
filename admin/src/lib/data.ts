@@ -11,7 +11,8 @@ export type BillCycle   = "monthly" | "sixmonths" | "yearly";
 
 export type Exam = {
   id: string; name: string; short: string; description: string;
-  subjects: number; tricks: number; accent: string;
+  subjects: number; tricks: number; accent: string; examDate?: string;
+  medium: 'hindi' | 'english'; imageUrl?: string;
 };
 export type Subject = {
   id: string; name: string; icon: string; chapters: number;
@@ -78,6 +79,7 @@ export type AdminNotification = {
   target: NotiTarget;
   targetExamId?: string;
   scheduledAt: string;
+  sentAt?: string;
   status: "draft" | "scheduled" | "sent";
 };
 
@@ -86,6 +88,28 @@ export type TrickOfDay = {
   trickId: string;
   date: string;
   note?: string;
+  accent?: string;
+};
+
+export type TopicMap = {
+  id: string;
+  topicId: string;
+  title: string;
+  imageUrl: string;
+  sortOrder: number;
+};
+
+export type MockQuestion = {
+  id: string;
+  examId: string;
+  question: string;
+  optionA: string;
+  optionB: string;
+  optionC: string;
+  optionD: string;
+  correctOption: 'A' | 'B' | 'C' | 'D';
+  explanation?: string;
+  difficulty: "Easy" | "Medium" | "Hard";
 };
 
 export type ExamPricing = {
@@ -93,6 +117,7 @@ export type ExamPricing = {
   monthly: number;
   sixmonths: number;
   yearly: number;
+  discountPercent: number;
 };
 
 export type AppAbout = {
@@ -106,8 +131,20 @@ export type AppAbout = {
   termsUrl: string;
   playStoreUrl: string;
   appStoreUrl: string;
-  teamMembers: { name: string; role: string }[];
+  teamMembers: { name: string; role: string; photo?: string }[];
   socialLinks: { platform: string; url: string }[];
+};
+
+export type AdminSubscription = {
+  id: string;
+  userId: string;
+  examId: string | null;
+  planType: string;
+  billingCycle: BillCycle;
+  amountPaise: number;
+  status: 'active' | 'cancelled' | 'expired';
+  expiresAt: string;
+  createdAt: string;
 };
 
 export type Store = {
@@ -115,7 +152,8 @@ export type Store = {
   subjects: Subject[];
   chapters: Chapter[];
   topics: Topic[];
-  tricks: Trick[];
+  tricks: Trick[];       // tricks_english
+  tricksHindi: Trick[];  // tricks_hindi
   notes: ShortNote[];
   news: ExamNews[];
   users: AppUser[];
@@ -125,18 +163,21 @@ export type Store = {
   trickOfDay: TrickOfDay[];
   pricing: ExamPricing[];
   about: AppAbout;
+  mockQuestions: MockQuestion[];
+  subscriptions: AdminSubscription[];
+  maps: TopicMap[];
 };
 
 // ─── Seed data ────────────────────────────────────────────────────────────────
 
 const SEED: Store = {
   exams: [
-    { id: "upsc",  name: "UPSC CSE",  short: "UPSC",  description: "Civil Services Examination",  subjects: 6, tricks: 480, accent: "from-amber-400/30 to-amber-700/10"   },
-    { id: "ssc",   name: "SSC CGL",   short: "SSC",   description: "Staff Selection Commission",   subjects: 6, tricks: 320, accent: "from-rose-400/30 to-rose-700/10"    },
-    { id: "neet",  name: "NEET UG",   short: "NEET",  description: "Medical Entrance Exam",        subjects: 6, tricks: 540, accent: "from-emerald-400/30 to-emerald-700/10" },
-    { id: "jee",   name: "JEE Main",  short: "JEE",   description: "Engineering Entrance",         subjects: 6, tricks: 610, accent: "from-sky-400/30 to-sky-700/10"       },
-    { id: "cat",   name: "CAT",       short: "CAT",   description: "MBA Entrance Exam",            subjects: 4, tricks: 220, accent: "from-violet-400/30 to-violet-700/10" },
-    { id: "bank",  name: "Banking",   short: "IBPS",  description: "PO, Clerk & RRB",             subjects: 6, tricks: 380, accent: "from-cyan-400/30 to-cyan-700/10"     },
+    { id: "upsc",  name: "UPSC CSE",  short: "UPSC",  description: "Civil Services Examination",  subjects: 6, tricks: 480, accent: "from-amber-400/30 to-amber-700/10",   medium: "english" },
+    { id: "ssc",   name: "SSC CGL",   short: "SSC",   description: "Staff Selection Commission",   subjects: 6, tricks: 320, accent: "from-rose-400/30 to-rose-700/10",    medium: "english" },
+    { id: "neet",  name: "NEET UG",   short: "NEET",  description: "Medical Entrance Exam",        subjects: 6, tricks: 540, accent: "from-emerald-400/30 to-emerald-700/10", medium: "english" },
+    { id: "jee",   name: "JEE Main",  short: "JEE",   description: "Engineering Entrance",         subjects: 6, tricks: 610, accent: "from-sky-400/30 to-sky-700/10",       medium: "english" },
+    { id: "cat",   name: "CAT",       short: "CAT",   description: "MBA Entrance Exam",            subjects: 4, tricks: 220, accent: "from-violet-400/30 to-violet-700/10", medium: "english" },
+    { id: "bank",  name: "Banking",   short: "IBPS",  description: "PO, Clerk & RRB",             subjects: 6, tricks: 380, accent: "from-cyan-400/30 to-cyan-700/10",     medium: "english" },
   ],
   subjects: [
     { id: "history", name: "History",         icon: "📜", chapters: 4,  examId: "upsc", color: "from-amber-500/25 to-amber-900/5"     },
@@ -212,6 +253,7 @@ const SEED: Store = {
     { id: "t2", title: "Fundamental Rights — Indian Constitution", content: "RECREE — 6 Rights", explanation: "Right to Equality, Right against Exploitation, Cultural & Educational, Religion, Equality before law, Education.", difficulty: "Medium", subject: "Polity",  topic: "fr-rights"  },
     { id: "t3", title: "Trigonometric Identities (SOH-CAH-TOA)",  content: "SOH-CAH-TOA",        explanation: "Sin = Opposite/Hypotenuse, Cos = Adjacent/Hypotenuse, Tan = Opposite/Adjacent.",               difficulty: "Easy",   subject: "Maths",   topic: "trig"       },
   ],
+  tricksHindi: [],
   notes: [],
   news: [
     { id: "n1", exam: "UPSC",  title: "CSE Prelims 2026 notification released",  date: "Feb 14", tag: "Notification", accent: "from-amber-500/30 to-amber-900/10"    },
@@ -267,12 +309,12 @@ const SEED: Store = {
     { id: "tod3", trickId: "t2", date: "2026-06-09", note: "Polity fundamentals"         },
   ],
   pricing: [
-    { examId: "upsc", monthly: 199, sixmonths: 999,  yearly: 1699 },
-    { examId: "ssc",  monthly: 149, sixmonths: 749,  yearly: 1299 },
-    { examId: "neet", monthly: 249, sixmonths: 1299, yearly: 2199 },
-    { examId: "jee",  monthly: 249, sixmonths: 1299, yearly: 2199 },
-    { examId: "cat",  monthly: 179, sixmonths: 899,  yearly: 1499 },
-    { examId: "bank", monthly: 129, sixmonths: 649,  yearly: 1099 },
+    { examId: "upsc", monthly: 199, sixmonths: 999,  yearly: 1699, discountPercent: 0 },
+    { examId: "ssc",  monthly: 149, sixmonths: 749,  yearly: 1299, discountPercent: 0 },
+    { examId: "neet", monthly: 249, sixmonths: 1299, yearly: 2199, discountPercent: 0 },
+    { examId: "jee",  monthly: 249, sixmonths: 1299, yearly: 2199, discountPercent: 0 },
+    { examId: "cat",  monthly: 179, sixmonths: 899,  yearly: 1499, discountPercent: 0 },
+    { examId: "bank", monthly: 129, sixmonths: 649,  yearly: 1099, discountPercent: 0 },
   ],
   about: {
     appName: "KrackIT",
@@ -298,6 +340,9 @@ const SEED: Store = {
       { platform: "LinkedIn",  url: "https://linkedin.com/company/krackit" },
     ],
   },
+  mockQuestions: [],
+  subscriptions: [],
+  maps: [],
 };
 
 // ─── localStorage persistence ─────────────────────────────────────────────────
@@ -320,6 +365,7 @@ export function loadStore(): Store {
         trickOfDay:    parsed.trickOfDay    ?? SEED.trickOfDay,
         pricing:       parsed.pricing       ?? SEED.pricing,
         about:         parsed.about         ?? SEED.about,
+        subscriptions: parsed.subscriptions ?? SEED.subscriptions,
       };
     }
   } catch { /* ignore */ }
@@ -347,23 +393,25 @@ import type {
   Topic as DbTopic, Trick as DbTrick, ShortNote as DbNote,
   ExamNews as DbNews, ExamPricing as DbPricing, TrickOfDay as DbTod,
   AppSettings, TrickRating as DbRating, SupportIssue as DbIssue,
-  PushNotification as DbNoti, UserProfile as DbProfile,
+  PushNotification as DbNoti, UserProfile as DbProfile, MockQuestion as DbMockQuestion,
+  Subscription as DbSubscription, TopicMap as DbTopicMap,
 } from './adminApiTypes';
 
 type AdminData = {
   exams: DbExam[]; subjects: DbSubject[]; chapters: DbChapter[];
-  topics: DbTopic[]; tricks: DbTrick[]; notes: DbNote[]; news: DbNews[];
+  topics: DbTopic[]; tricks: DbTrick[]; tricksHindi?: DbTrick[]; notes: DbNote[]; news: DbNews[];
   users: DbProfile[]; ratings: DbRating[]; issues: DbIssue[];
   notifications: DbNoti[]; trickOfDay: DbTod[]; pricing: DbPricing[];
-  about: AppSettings;
+  about: AppSettings; mockQuestions: DbMockQuestion[];
+  subscriptions: DbSubscription[]; maps: DbTopicMap[];
 };
 
 export function emptyStore(): Store {
   return {
     exams: [], subjects: [], chapters: [], topics: [],
-    tricks: [], notes: [], news: [],
+    tricks: [], tricksHindi: [], notes: [], news: [],
     users: [], ratings: [], issues: [], notifications: [],
-    trickOfDay: [], pricing: [],
+    trickOfDay: [], pricing: [], mockQuestions: [], subscriptions: [], maps: [],
     about: {
       appName: 'KrackIT', tagline: '', version: '1.0.0', description: '',
       supportEmail: '', websiteUrl: '', privacyUrl: '', termsUrl: '',
@@ -384,6 +432,9 @@ export function mapDbToStore(d: AdminData): Store {
         subjects: subjectIds.length,
         tricks:   d.tricks.filter(tr => topicIds.includes(tr.topic_id)).length,
         accent: e.accent ?? '',
+        examDate: e.exam_date ?? undefined,
+        medium: (e.medium === 'hindi' ? 'hindi' : 'english') as 'hindi' | 'english',
+        imageUrl: e.image_url ?? undefined,
       };
     }),
     subjects: d.subjects.map(s => ({
@@ -408,6 +459,10 @@ export function mapDbToStore(d: AdminData): Store {
       id: t.id, title: t.title, content: t.content, explanation: t.explanation,
       difficulty: t.difficulty, subject: t.subject_tag ?? '', topic: t.topic_id,
     })),
+    tricksHindi: (d.tricksHindi ?? []).map(t => ({
+      id: t.id, title: t.title, content: t.content, explanation: t.explanation,
+      difficulty: t.difficulty, subject: t.subject_tag ?? '', topic: t.topic_id,
+    })),
     notes: d.notes.map(n => ({
       id: n.id, topicId: n.topic_id, title: n.title,
       content: n.content, isCustom: n.is_custom,
@@ -416,11 +471,19 @@ export function mapDbToStore(d: AdminData): Store {
       id: n.id, exam: n.exam_id, title: n.title,
       date: n.date_label ?? '', tag: n.tag, accent: n.accent ?? '',
     })),
-    users: d.users.map(u => ({
-      id: u.id, name: u.name ?? '', email: '', phone: u.phone ?? '',
-      joinedAt: u.created_at, tier: u.tier, subscribedExams: [],
-      lastActiveAt: u.last_active_at, tricksLearned: u.tricks_learned, streak: u.streak,
-    })),
+    users: d.users.map(u => {
+      const userSubs = (d.subscriptions ?? []).filter(s => s.user_id === u.id && s.status === 'active');
+      const examPackSubs = userSubs.filter(s => s.plan_type === 'exam_pack');
+      const subscribedExams = [...new Set(examPackSubs.map(s => s.exam_id).filter((id): id is string => !!id))];
+      const latestSub = [...examPackSubs].sort((a, b) => new Date(b.expires_at).getTime() - new Date(a.expires_at).getTime())[0];
+      return {
+        id: u.id, name: u.name ?? '', email: '', phone: u.phone ?? '',
+        joinedAt: u.created_at, tier: u.tier, subscribedExams,
+        subscriptionExpiry: latestSub?.expires_at?.slice(0, 10) ?? undefined,
+        billingCycle: (latestSub?.billing_cycle ?? undefined) as import('./data').BillCycle | undefined,
+        lastActiveAt: u.last_active_at, tricksLearned: u.tricks_learned, streak: u.streak,
+      };
+    }),
     ratings: d.ratings.map(r => ({
       trickId: r.trick_id, avgRating: r.avg_rating, totalRatings: r.total_ratings,
       dist: [r.star1, r.star2, r.star3, r.star4, r.star5],
@@ -434,13 +497,14 @@ export function mapDbToStore(d: AdminData): Store {
     notifications: d.notifications.map(n => ({
       id: n.id, title: n.title, body: n.body, type: n.type, target: n.target,
       targetExamId: n.target_exam_id ?? undefined,
-      scheduledAt: n.scheduled_at ?? '', status: n.status,
+      scheduledAt: n.scheduled_at ?? '', sentAt: n.sent_at ?? undefined, status: n.status,
     })),
     trickOfDay: d.trickOfDay.map(t => ({
-      id: t.id, trickId: t.trick_id, date: t.date, note: t.note ?? undefined,
+      id: t.id, trickId: t.trick_id, date: t.date, note: t.note ?? undefined, accent: t.accent ?? undefined,
     })),
     pricing: d.pricing.map(p => ({
       examId: p.exam_id, monthly: p.monthly, sixmonths: p.sixmonths, yearly: p.yearly,
+      discountPercent: (p as any).discount_percent ?? 0,
     })),
     about: {
       appName: d.about.app_name, tagline: d.about.tagline, version: d.about.version,
@@ -450,5 +514,21 @@ export function mapDbToStore(d: AdminData): Store {
       appStoreUrl: d.about.app_store_url ?? '',
       teamMembers: d.about.team_members ?? [], socialLinks: d.about.social_links ?? [],
     },
+    mockQuestions: (d.mockQuestions ?? []).map((q: any) => ({
+      id: q.id, examId: q.exam_id, question: q.question,
+      optionA: q.option_a, optionB: q.option_b, optionC: q.option_c, optionD: q.option_d,
+      correctOption: q.correct_option, explanation: q.explanation ?? undefined,
+      difficulty: q.difficulty ?? 'Medium',
+    })),
+    subscriptions: (d.subscriptions ?? []).map(s => ({
+      id: s.id, userId: s.user_id, examId: s.exam_id,
+      planType: s.plan_type, billingCycle: s.billing_cycle,
+      amountPaise: s.amount_paise, status: s.status,
+      expiresAt: s.expires_at, createdAt: s.created_at,
+    })),
+    maps: (d.maps ?? []).map((m: any) => ({
+      id: m.id, topicId: m.topic_id, title: m.title,
+      imageUrl: m.image_url, sortOrder: m.sort_order,
+    })),
   };
 }

@@ -3,6 +3,7 @@ import { type Chapter, type Subject } from "@/lib/krackit-data";
 import { useData } from "@/lib/DataContext";
 import { cn } from "@/lib/utils";
 import { SubscriptionBanner } from "./SubscriptionBanner";
+import type { ExamMode } from "./SubjectsScreen";
 
 type DataArrays = { topics: ReturnType<typeof useData>["topics"]; tricks: ReturnType<typeof useData>["tricks"] };
 
@@ -33,6 +34,8 @@ export function ChaptersScreen({
   mastered,
   openedTricks,
   isLocked,
+  mode = "tricks",
+  medium,
   onBack,
   onSelect,
   onOpenSubscription,
@@ -41,11 +44,13 @@ export function ChaptersScreen({
   mastered: Set<string>;
   openedTricks: Set<string>;
   isLocked: boolean;
+  mode?: ExamMode;
+  medium?: string;
   onBack: () => void;
   onSelect: (c: Chapter) => void;
   onOpenSubscription: () => void;
 }) {
-  const { chapters, topics, tricks } = useData();
+  const { chapters, topics, tricks, shortNotes, maps, translate } = useData();
   const da = { topics, tricks };
   const list = chapters.filter((c) => c.subjectId === subject.id);
 
@@ -65,7 +70,7 @@ export function ChaptersScreen({
             </div>
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-widest text-gold">Subject</p>
-              <h1 className="text-2xl font-bold text-foreground">{subject.name}</h1>
+              <h1 className="text-2xl font-bold text-foreground">{translate(subject.name)}</h1>
             </div>
           </div>
         </header>
@@ -87,6 +92,10 @@ export function ChaptersScreen({
               const openedPct = openedFraction(c.id, openedTricks, da);
               const displayPct = masteredPct > 0 ? masteredPct : openedPct;
               const isComplete = masteredPct === 1 && masteredPct > 0;
+              const chapterTopicIds = topics.filter((t) => t.chapterId === c.id).map((t) => t.id);
+              const notesCount = shortNotes.filter((n) => chapterTopicIds.includes(n.topicId)).length;
+              const mapsCount  = maps.filter((m) => chapterTopicIds.includes(m.topicId)).length;
+              const tricksCount = tricks.filter((tr) => chapterTopicIds.includes(tr.topic)).length || c.tricksCount;
 
               return (
                 <li key={c.id}>
@@ -109,14 +118,20 @@ export function ChaptersScreen({
                     {/* Content — blurred when locked */}
                     <div className={cn("min-w-0 flex-1", locked && "select-none")}>
                       <div className={cn("flex items-center gap-2", locked && "blur-[2px]")}>
-                        <p className="truncate text-sm font-semibold text-foreground">{c.name}</p>
+                        <p className="truncate text-sm font-semibold text-foreground">{translate(c.name)}</p>
                         {isComplete && !locked && (
                           <span className="shrink-0 rounded-full bg-gold/20 px-2 py-0.5 text-[10px] font-semibold text-gold">
                             Complete
                           </span>
                         )}
                       </div>
-                      <p className={cn("mt-0.5 text-[11px] text-muted-foreground", locked && "blur-[2px]")}>{c.tricksCount} tricks</p>
+                      <p className={cn("mt-0.5 text-[11px] text-muted-foreground", locked && "blur-[2px]")}>
+                        {mode === "shortnotes"
+                          ? `${notesCount} note${notesCount !== 1 ? "s" : ""}`
+                          : mode === "maps"
+                          ? `${mapsCount} map${mapsCount !== 1 ? "s" : ""}`
+                          : `${tricksCount} trick${tricksCount !== 1 ? "s" : ""}`}
+                      </p>
                       {!locked && (
                         <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-background">
                           <div className="h-full gold-gradient transition-all" style={{ width: `${Math.round(displayPct * 100)}%` }} />

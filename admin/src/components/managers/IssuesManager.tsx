@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Plus, Pencil, Trash2, AlertCircle, Clock, CheckCircle } from "lucide-react";
+import { Plus, Pencil, Trash2, AlertCircle, Clock, CheckCircle, ChevronUp, ChevronDown, RefreshCw } from "lucide-react";
 import { useStore } from "../../App";
 import { uid, type SupportIssue, type IssueStatus, type IssuePriority } from "../../lib/data";
 import { issuesApi } from "../../lib/adminApi";
 import { Modal, Field, Input, Textarea, Select, SaveBtn, DeleteConfirm } from "../Modal";
 import { Pagination, usePagination } from "../Pagination";
+import { useSort } from "../Sort";
 
 const STATUS_OPTS: IssueStatus[]   = ["open", "in_progress", "resolved"];
 const PRIORITY_OPTS: IssuePriority[] = ["low", "medium", "high"];
@@ -30,6 +31,7 @@ type FilterStatus = IssueStatus | "all";
 
 export function IssuesManager() {
   const { store, refresh } = useStore();
+  const [refreshing, setRefreshing] = useState(false);
   const [modal, setModal]   = useState<"add" | SupportIssue | null>(null);
   const [delTarget, setDel] = useState<SupportIssue | null>(null);
   const [form, setForm]     = useState(empty());
@@ -41,7 +43,8 @@ export function IssuesManager() {
     if (filterPriority !== "all" && i.priority !== filterPriority) return false;
     return true;
   });
-  const { page, setPage, pageItems: filtered, totalPages } = usePagination(allFiltered, 10);
+  const { sortField, sortDir, toggle, sorted } = useSort(allFiltered as unknown as Record<string, unknown>[], "createdAt", "desc");
+  const { page, setPage, pageItems: filtered, totalPages } = usePagination(sorted as unknown as typeof allFiltered, 10);
 
   const openAdd  = () => { setForm(empty()); setModal("add"); };
   const openEdit = (i: SupportIssue) => {
@@ -94,9 +97,19 @@ export function IssuesManager() {
           <h1 className="text-xl font-bold text-[var(--foreground)]">User Issues</h1>
           <p className="text-sm text-[var(--muted-foreground)]">{store.issues.length} total · {counts.open} open · {counts.in_progress} in progress</p>
         </div>
-        <button onClick={openAdd} className="flex items-center gap-2 rounded-xl gold-gradient px-4 py-2.5 text-sm font-bold text-[#1a1410]">
-          <Plus className="h-4 w-4" /> Add Issue
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={async () => { setRefreshing(true); await refresh(); setRefreshing(false); }}
+            disabled={refreshing}
+            className="flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-2.5 text-sm font-medium text-[var(--foreground)] hover:border-[var(--gold)]/40 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+            {refreshing ? "Refreshing…" : "Refresh"}
+          </button>
+          <button onClick={openAdd} className="flex items-center gap-2 rounded-xl gold-gradient px-4 py-2.5 text-sm font-bold text-[#1a1410]">
+            <Plus className="h-4 w-4" /> Add Issue
+          </button>
+        </div>
       </div>
 
       {/* Status summary */}
@@ -116,12 +129,21 @@ export function IssuesManager() {
         })}
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-2">
+      {/* Filters + Sort */}
+      <div className="flex flex-wrap items-center gap-2">
         <select value={filterPriority} onChange={(e) => setFP(e.target.value as IssuePriority | "all")} className={selClass}>
           <option value="all">All Priorities</option>
           {PRIORITY_OPTS.map((p) => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
         </select>
+        <span className="text-xs text-[var(--muted-foreground)] ml-2">Sort:</span>
+        {([["createdAt","Date"],["priority","Priority"],["status","Status"],["userName","User"]] as const).map(([key, label]) => (
+          <button key={key} onClick={() => toggle(key)}
+            className={`flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors ${
+              sortField === key ? "border-[var(--gold)] bg-[var(--gold)]/10 text-[var(--gold)]" : "border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)]"}`}>
+            {label}
+            {sortField === key && (sortDir === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
+          </button>
+        ))}
       </div>
 
       <div className="space-y-3">

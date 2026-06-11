@@ -5,10 +5,6 @@ import { cn } from "@/lib/utils";
 
 type Duration = "monthly" | "sixmonths" | "yearly";
 
-const MONTHLY_PRICE    = 149;
-const SIXMONTHS_PRICE  = 749;
-const YEARLY_PRICE     = 1299;
-
 export function ExamPlanSelectionScreen({
   examIds,
   onSelectDuration,
@@ -18,16 +14,40 @@ export function ExamPlanSelectionScreen({
   onSelectDuration: (duration: Duration) => void;
   onBack: () => void;
 }) {
-  const { exams } = useData();
+  const { exams, pricing } = useData();
   const [selected, setSelected] = useState<Duration | null>(null);
   const selectedExams = examIds.map((id) => exams.find((e) => e.id === id)).filter(Boolean);
   const count = examIds.length;
 
-  const monthlyTotal    = count * MONTHLY_PRICE;
-  const sixmonthsTotal  = count * SIXMONTHS_PRICE;
-  const yearlyTotal     = count * YEARLY_PRICE;
-  const sixmonthsSaving = monthlyTotal * 6 - sixmonthsTotal;
-  const yearlySaving    = monthlyTotal * 12 - yearlyTotal;
+  const getOriginalPrice = (examId: string, d: Duration): number => {
+    const p = pricing.find((x) => x.exam_id === examId);
+    if (!p) return d === "monthly" ? 149 : d === "sixmonths" ? 749 : 1299;
+    return p[d];
+  };
+
+  const applyDiscount = (base: number, examId: string): number => {
+    const p = pricing.find((x) => x.exam_id === examId);
+    const pct = (p as any)?.discount_percent ?? 0;
+    return pct > 0 ? Math.round(base * (1 - pct / 100)) : base;
+  };
+
+  const getPrice = (examId: string, d: Duration): number =>
+    applyDiscount(getOriginalPrice(examId, d), examId);
+
+  // Active discount badge for the first exam that has one
+  const activeDiscount = examIds.reduce((max, id) => {
+    const p = pricing.find((x) => x.exam_id === id);
+    return Math.max(max, (p as any)?.discount_percent ?? 0);
+  }, 0);
+
+  const monthlyOrig     = examIds.reduce((s, id) => s + getOriginalPrice(id, "monthly"),   0);
+  const sixmonthsOrig   = examIds.reduce((s, id) => s + getOriginalPrice(id, "sixmonths"), 0);
+  const yearlyOrig      = examIds.reduce((s, id) => s + getOriginalPrice(id, "yearly"),    0);
+  const monthlyTotal    = examIds.reduce((s, id) => s + getPrice(id, "monthly"),   0);
+  const sixmonthsTotal  = examIds.reduce((s, id) => s + getPrice(id, "sixmonths"), 0);
+  const yearlyTotal     = examIds.reduce((s, id) => s + getPrice(id, "yearly"),    0);
+  const sixmonthsSaving = monthlyOrig * 6 - sixmonthsTotal;
+  const yearlySaving    = monthlyOrig * 12 - yearlyTotal;
 
   const plans = [
     {
@@ -35,8 +55,9 @@ export function ExamPlanSelectionScreen({
       label: "Monthly",
       icon: CalendarDays,
       price: monthlyTotal,
+      origPrice: monthlyOrig !== monthlyTotal ? monthlyOrig : null,
       period: "/ month",
-      note: `₹${MONTHLY_PRICE} per exam · billed monthly`,
+      note: count > 1 ? `₹${Math.round(monthlyTotal / count)}/exam avg · billed monthly` : "billed monthly",
       badge: null as string | null,
     },
     {
@@ -44,6 +65,7 @@ export function ExamPlanSelectionScreen({
       label: "6 Months",
       icon: CalendarRange,
       price: sixmonthsTotal,
+      origPrice: sixmonthsOrig !== sixmonthsTotal ? sixmonthsOrig : null,
       period: "/ 6 months",
       note: `Save ₹${sixmonthsSaving.toLocaleString("en-IN")} vs monthly`,
       badge: "Popular",
@@ -53,6 +75,7 @@ export function ExamPlanSelectionScreen({
       label: "Yearly",
       icon: Calendar,
       price: yearlyTotal,
+      origPrice: yearlyOrig !== yearlyTotal ? yearlyOrig : null,
       period: "/ year",
       note: `Save ₹${yearlySaving.toLocaleString("en-IN")} vs monthly`,
       badge: "Best Value",
@@ -96,8 +119,18 @@ export function ExamPlanSelectionScreen({
         </div>
       </div>
 
+      {/* Discount banner */}
+      {activeDiscount > 0 && (
+        <div className="mx-5 mt-4 flex items-center gap-2 rounded-2xl bg-emerald-400/10 border border-emerald-400/20 px-4 py-2.5">
+          <span className="text-lg">🎉</span>
+          <p className="text-xs font-semibold text-emerald-400">
+            {activeDiscount}% limited-time discount applied!
+          </p>
+        </div>
+      )}
+
       {/* Plan cards */}
-      <div className="mt-6 space-y-3 px-5">
+      <div className="mt-4 space-y-3 px-5">
         <p className="text-sm font-semibold text-muted-foreground mb-2">Select billing period</p>
         {plans.map((plan) => {
           const PlanIcon = plan.icon;
@@ -129,8 +162,11 @@ export function ExamPlanSelectionScreen({
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-base font-bold text-foreground">{plan.label}</p>
-                <div className="flex items-baseline gap-1 mt-0.5">
+                <div className="flex items-baseline gap-2 mt-0.5">
                   <span className="text-2xl font-bold text-foreground">₹{plan.price.toLocaleString("en-IN")}</span>
+                  {plan.origPrice && (
+                    <span className="text-sm line-through text-muted-foreground">₹{plan.origPrice.toLocaleString("en-IN")}</span>
+                  )}
                   <span className="text-xs text-muted-foreground">{plan.period}</span>
                 </div>
                 <p className={cn(

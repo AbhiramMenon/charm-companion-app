@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Plus, Pencil, Trash2, Search, Star } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Star, ChevronUp, ChevronDown } from "lucide-react";
 import { useStore } from "../../App";
 import { uid, type Trick, type Difficulty } from "../../lib/data";
-import { tricksApi } from "../../lib/adminApi";
+import { tricksApi, tricksHindiApi } from "../../lib/adminApi";
 import { Modal, Field, Input, Textarea, Select, SaveBtn, DeleteConfirm } from "../Modal";
 import { Pagination, usePagination } from "../Pagination";
+import { useSort } from "../Sort";
 
 const DIFFICULTIES: Difficulty[] = ["Easy", "Medium", "Hard"];
 const DIFF_COLOR: Record<Difficulty, string> = {
@@ -17,6 +18,7 @@ const empty = (): Omit<Trick, "id"> => ({ title: "", content: "", explanation: "
 
 export function TricksManager() {
   const { store, refresh } = useStore();
+  const [lang, setLang]       = useState<"english" | "hindi">("english");
   const [modal, setModal]     = useState<"add" | Trick | null>(null);
   const [delTarget, setDel]   = useState<Trick | null>(null);
   const [form, setForm]       = useState(empty());
@@ -33,6 +35,10 @@ export function TricksManager() {
   const [mSubject, setMSubject] = useState("");
   const [mChapter, setMChapter] = useState("");
 
+  const activeTricks = lang === "english" ? store.tricks : (store.tricksHindi ?? []);
+  const activeApi    = lang === "english" ? tricksApi : tricksHindiApi;
+  const totalCount   = activeTricks.length;
+
   // Cascade options for filter panel
   const subjectOpts  = store.subjects.filter((s) => !filterExam    || s.examId    === filterExam);
   const chapterOpts  = store.chapters.filter((c) => !filterSubject || c.subjectId === filterSubject);
@@ -43,7 +49,7 @@ export function TricksManager() {
   const mChapterOpts = store.chapters.filter((c) => !mSubject || c.subjectId === mSubject);
   const mTopicOpts   = store.topics.filter((t)   => !mChapter || t.chapterId === mChapter);
 
-  const allFiltered = store.tricks.filter((t) => {
+  const allFiltered = activeTricks.filter((t) => {
     const q = search.toLowerCase();
     if (q && !t.title.toLowerCase().includes(q) && !t.content.toLowerCase().includes(q)) return false;
     if (filterTopic   && t.topic !== filterTopic) return false;
@@ -56,9 +62,12 @@ export function TricksManager() {
     })) return false;
     return true;
   });
-  const { page, setPage, pageItems: filtered, totalPages } = usePagination(allFiltered, 10);
+  const { sortField, sortDir, toggle, sorted } = useSort(allFiltered as unknown as Record<string, unknown>[], "title");
+  const { page, setPage, pageItems: filtered, totalPages } = usePagination(sorted as unknown as typeof allFiltered, 10);
 
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }));
+
+  const resetFilters = () => { setFExam(""); setFSubject(""); setFChapter(""); setFTopic(""); setSearch(""); };
 
   const openAdd = () => {
     setMExam(""); setMSubject(""); setMChapter("");
@@ -103,9 +112,9 @@ export function TricksManager() {
     if (!form.topic) { alert("Please select a topic."); return; }
     try {
       if (modal === "add") {
-        await tricksApi.create({ id: uid(), title: form.title, content: form.content, explanation: form.explanation, difficulty: form.difficulty, subject_tag: form.subject || null, topic_id: form.topic, sort_order: store.tricks.length });
+        await activeApi.create({ id: uid(), title: form.title, content: form.content, explanation: form.explanation, difficulty: form.difficulty, subject_tag: form.subject || null, topic_id: form.topic, sort_order: totalCount });
       } else if (modal) {
-        await tricksApi.update((modal as Trick).id, { title: form.title, content: form.content, explanation: form.explanation, difficulty: form.difficulty, subject_tag: form.subject || null, topic_id: form.topic });
+        await activeApi.update((modal as Trick).id, { title: form.title, content: form.content, explanation: form.explanation, difficulty: form.difficulty, subject_tag: form.subject || null, topic_id: form.topic });
       }
       await refresh();
     } catch (err: any) { alert(err.message); return; }
@@ -113,7 +122,7 @@ export function TricksManager() {
   };
 
   const handleDelete = async (t: Trick) => {
-    try { await tricksApi.delete(t.id); await refresh(); }
+    try { await activeApi.delete(t.id); await refresh(); }
     catch (err: any) { alert(err.message); }
     setDel(null);
   };
@@ -127,11 +136,29 @@ export function TricksManager() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-[var(--foreground)]">Tricks</h1>
-          <p className="text-sm text-[var(--muted-foreground)]">{allFiltered.length} shown of {store.tricks.length}</p>
+          <p className="text-sm text-[var(--muted-foreground)]">{allFiltered.length} shown of {totalCount}</p>
         </div>
-        <button onClick={openAdd} className="flex items-center gap-2 rounded-xl gold-gradient px-4 py-2.5 text-sm font-bold text-[#1a1410]">
-          <Plus className="h-4 w-4" /> Add Trick
-        </button>
+        <div className="flex items-center gap-3">
+          {/* Language tab */}
+          <div className="flex rounded-xl border border-[var(--border)] overflow-hidden">
+            {(["english", "hindi"] as const).map((l) => (
+              <button
+                key={l}
+                onClick={() => { setLang(l); resetFilters(); }}
+                className={`px-4 py-2 text-sm font-semibold capitalize transition-colors ${
+                  lang === l
+                    ? "bg-[var(--gold)] text-[#1a1410]"
+                    : "bg-[var(--surface)] text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+                }`}
+              >
+                {l}
+              </button>
+            ))}
+          </div>
+          <button onClick={openAdd} className="flex items-center gap-2 rounded-xl gold-gradient px-4 py-2.5 text-sm font-bold text-[#1a1410]">
+            <Plus className="h-4 w-4" /> Add Trick
+          </button>
+        </div>
       </div>
 
       {/* Search + cascade filters */}
@@ -159,6 +186,19 @@ export function TricksManager() {
             {topicOpts.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
           </select>
         </div>
+      </div>
+
+      {/* Sort bar */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-xs text-[var(--muted-foreground)]">Sort:</span>
+        {([["title","Title"],["difficulty","Difficulty"]] as const).map(([key, label]) => (
+          <button key={key} onClick={() => toggle(key)}
+            className={`flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors ${
+              sortField === key ? "border-[var(--gold)] bg-[var(--gold)]/10 text-[var(--gold)]" : "border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)]"}`}>
+            {label}
+            {sortField === key && (sortDir === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
+          </button>
+        ))}
       </div>
 
       <div className="space-y-2">
@@ -201,7 +241,7 @@ export function TricksManager() {
       <Pagination page={page} totalPages={totalPages} onChange={setPage} />
 
       {modal && (
-        <Modal title={modal === "add" ? "Add Trick" : "Edit Trick"} onClose={() => setModal(null)} wide>
+        <Modal title={modal === "add" ? `Add ${lang === "hindi" ? "Hindi" : "English"} Trick` : "Edit Trick"} onClose={() => setModal(null)} wide>
           <form onSubmit={handleSave} className="space-y-4">
             <Field label="Title">
               <Input value={form.title} onChange={(e) => set("title", e.target.value)} placeholder="Remember Mughal Emperors in Order" required />

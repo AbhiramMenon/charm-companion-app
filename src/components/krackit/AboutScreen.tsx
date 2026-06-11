@@ -91,7 +91,15 @@ export function AboutScreen({ onBack }: { onBack: () => void }) {
               {teamMembers.map((m, i) => (
                 <div key={`${m.name}-${i}`} className={`rounded-2xl border border-border bg-gradient-to-br ${COLORS[i % COLORS.length]} bg-surface p-4`}>
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-background ring-1 ring-white/10">
+                    {m.photo ? (
+                      <img
+                        src={m.photo}
+                        alt={m.name}
+                        className="h-12 w-12 shrink-0 rounded-xl object-cover ring-1 ring-gold/30"
+                        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; (e.currentTarget.nextElementSibling as HTMLElement | null)?.style.setProperty('display', 'flex'); }}
+                      />
+                    ) : null}
+                    <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-background ring-1 ring-white/10 ${m.photo ? 'hidden' : 'flex'}`}>
                       <Users className="h-4 w-4 text-gold" />
                     </div>
                     <div>

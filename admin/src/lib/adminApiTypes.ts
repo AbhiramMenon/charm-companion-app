@@ -21,6 +21,9 @@ export type Exam = {
   accent: string;
   is_active: boolean;
   sort_order: number;
+  exam_date: string | null;
+  medium: string;
+  image_url: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -69,7 +72,7 @@ export type Trick = {
   topic_id: string;
   sort_order: number;
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
 };
 
 export type ShortNote = {
@@ -99,6 +102,7 @@ export type ExamPricing = {
   monthly: number;
   sixmonths: number;
   yearly: number;
+  discount_percent: number;
   updated_at: string;
 };
 
@@ -107,6 +111,7 @@ export type TrickOfDay = {
   trick_id: string;
   date: string;
   note: string | null;
+  accent: string | null;
   created_at: string;
 };
 
@@ -122,7 +127,7 @@ export type AppSettings = {
   terms_url: string | null;
   play_store_url: string | null;
   app_store_url: string | null;
-  team_members: { name: string; role: string }[];
+  team_members: { name: string; role: string; photo?: string }[];
   social_links: { platform: string; url: string }[];
   updated_at: string;
 };
@@ -181,6 +186,31 @@ export type SupportIssue = {
   created_at: string;
   resolved_at: string | null;
   updated_at: string;
+};
+
+export type MockQuestion = {
+  id: string;
+  exam_id: string;
+  question: string;
+  option_a: string;
+  option_b: string;
+  option_c: string;
+  option_d: string;
+  correct_option: 'A' | 'B' | 'C' | 'D';
+  explanation: string | null;
+  difficulty: Difficulty;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type TopicMap = {
+  id: string;
+  topic_id: string;
+  title: string;
+  image_url: string;
+  sort_order: number;
+  created_at: string;
 };
 
 export type PushNotification = {

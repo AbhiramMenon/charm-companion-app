@@ -20,14 +20,16 @@ import { TrickOfDayManager }     from "./components/managers/TrickOfDayManager";
 import { AnalyticsManager }      from "./components/managers/AnalyticsManager";
 import { AboutManager }          from "./components/managers/AboutManager";
 import { PricingManager }        from "./components/managers/PricingManager";
+import { MockTestManager }       from "./components/managers/MockTestManager";
+import { MapsManager }           from "./components/managers/MapsManager";
 import { ErrorBoundary }         from "./components/ErrorBoundary";
 
 export type Page =
   | "dashboard" | "exams" | "subjects" | "chapters" | "topics"
-  | "tricks" | "notes" | "news"
+  | "tricks" | "notes" | "maps" | "news"
   | "users" | "ratings" | "revenue" | "issues"
   | "notifications" | "trickofday"
-  | "analytics" | "pricing" | "about";
+  | "analytics" | "pricing" | "about" | "mocktests";
 
 // ─── Store context ─────────────────────────────────────────────────────────────
 
@@ -106,6 +108,7 @@ export function App() {
     topics:        <TopicsManager />,
     tricks:        <TricksManager />,
     notes:         <NotesManager />,
+    maps:          <MapsManager />,
     news:          <NewsManager />,
     users:         <UsersManager />,
     ratings:       <RatingsManager />,
@@ -116,6 +119,7 @@ export function App() {
     analytics:     <AnalyticsManager />,
     pricing:       <PricingManager />,
     about:         <AboutManager />,
+    mocktests:     <MockTestManager />,
   };
 
   return (

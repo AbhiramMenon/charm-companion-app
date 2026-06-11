@@ -9,6 +9,8 @@ function validatePricing(p: ExamPricing): Record<string, string> {
   if (isNaN(p.monthly) || p.monthly < 0)        e.monthly = "Enter a valid monthly price (≥ 0).";
   if (isNaN(p.sixmonths) || p.sixmonths < 0)     e.sixmonths = "Enter a valid 6-month price (≥ 0).";
   if (isNaN(p.yearly) || p.yearly < 0)           e.yearly = "Enter a valid yearly price (≥ 0).";
+  if (isNaN(p.discountPercent) || p.discountPercent < 0 || p.discountPercent > 100)
+    e.discountPercent = "Discount must be 0–100%.";
   if (p.monthly > 0 && p.sixmonths > 0 && p.sixmonths >= p.monthly * 6)
     e.sixmonths = "6-month price should be less than 6× monthly.";
   if (p.yearly > 0 && p.monthly > 0 && p.yearly >= p.monthly * 12)
@@ -18,7 +20,7 @@ function validatePricing(p: ExamPricing): Record<string, string> {
 
 function PricingRow({ examId, examName, examShort }: { examId: string; examName: string; examShort: string }) {
   const { store, refresh } = useStore();
-  const existing = store.pricing.find((p) => p.examId === examId) ?? { examId, monthly: 0, sixmonths: 0, yearly: 0 };
+  const existing = store.pricing.find((p) => p.examId === examId) ?? { examId, monthly: 0, sixmonths: 0, yearly: 0, discountPercent: 0 };
   const [form, setForm] = useState<ExamPricing>(structuredClone(existing));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
@@ -34,7 +36,7 @@ function PricingRow({ examId, examName, examShort }: { examId: string; examName:
     const errs = validatePricing(form);
     if (Object.keys(errs).length) { setErrors(errs); return; }
     try {
-      await pricingApi.upsert(examId, form.monthly, form.sixmonths, form.yearly);
+      await pricingApi.upsert(examId, form.monthly, form.sixmonths, form.yearly, form.discountPercent);
       await refresh();
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -51,6 +53,9 @@ function PricingRow({ examId, examName, examShort }: { examId: string; examName:
     { key: "sixmonths", label: "6 Months", hint: "per 6 months" },
     { key: "yearly",    label: "Yearly",   hint: "per year" },
   ] as const;
+
+  const discountedPrice = (base: number) =>
+    form.discountPercent > 0 ? Math.round(base * (1 - form.discountPercent / 100)) : base;
 
   return (
     <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
@@ -93,14 +98,52 @@ function PricingRow({ examId, examName, examShort }: { examId: string; examName:
         ))}
       </div>
 
+      {/* Discount */}
+      <div className="mt-3">
+        <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
+          Discount % (0 = no discount)
+        </label>
+        <div className="flex items-center gap-3">
+          <div className="relative w-36">
+            <input
+              type="number"
+              min={0}
+              max={100}
+              step={1}
+              value={form.discountPercent || ""}
+              onChange={(e) => setVal("discountPercent", e.target.value)}
+              placeholder="0"
+              className={inputCls("discountPercent")}
+            />
+          </div>
+          {form.discountPercent > 0 && (
+            <span className="rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-bold text-emerald-400">
+              {form.discountPercent}% off active
+            </span>
+          )}
+        </div>
+        {errors.discountPercent && <p className="mt-0.5 text-[11px] text-[var(--destructive)]">{errors.discountPercent}</p>}
+      </div>
+
       {/* Preview */}
       <div className="mt-4 grid grid-cols-3 gap-2">
-        {PLANS.map(({ key, label }) => (
-          <div key={key} className="rounded-xl bg-[var(--surface-2)] px-3 py-2 text-center">
-            <p className="text-xs text-[var(--muted-foreground)]">{label}</p>
-            <p className="text-lg font-black text-[var(--gold)]">₹{(form[key] || 0).toLocaleString()}</p>
-          </div>
-        ))}
+        {PLANS.map(({ key, label }) => {
+          const orig = form[key] || 0;
+          const disc = discountedPrice(orig);
+          return (
+            <div key={key} className="rounded-xl bg-[var(--surface-2)] px-3 py-2 text-center">
+              <p className="text-xs text-[var(--muted-foreground)]">{label}</p>
+              {form.discountPercent > 0 && orig > 0 ? (
+                <>
+                  <p className="text-sm line-through text-[var(--muted-foreground)]">₹{orig.toLocaleString()}</p>
+                  <p className="text-lg font-black text-emerald-400">₹{disc.toLocaleString()}</p>
+                </>
+              ) : (
+                <p className="text-lg font-black text-[var(--gold)]">₹{orig.toLocaleString()}</p>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

@@ -5,6 +5,7 @@ import { uid, type Chapter } from "../../lib/data";
 import { chaptersApi } from "../../lib/adminApi";
 import { Modal, Field, Input, Select, SaveBtn, DeleteConfirm } from "../Modal";
 import { Pagination, usePagination } from "../Pagination";
+import { useSort, Th } from "../Sort";
 
 const empty = (subjectId = ""): Omit<Chapter, "id"> => ({ name: "", subjectId, tricksCount: 0, progress: 0, icon: "📖" });
 
@@ -13,7 +14,6 @@ export function ChaptersManager() {
   const [modal, setModal]     = useState<"add" | Chapter | null>(null);
   const [delTarget, setDel]   = useState<Chapter | null>(null);
   const [form, setForm]       = useState(empty());
-
   // Filter-panel cascade
   const [filterExam, setFE]    = useState("");
   const [filterSubject, setFS] = useState("");
@@ -29,7 +29,8 @@ export function ChaptersManager() {
     if (filterExam && !filterSubjectOpts.some((s) => s.id === c.subjectId)) return false;
     return true;
   });
-  const { page, setPage, pageItems: filtered, totalPages } = usePagination(allFiltered, 15);
+  const { sortField, sortDir, toggle, sorted } = useSort(allFiltered as unknown as Record<string, unknown>[], "name");
+  const { page, setPage, pageItems: filtered, totalPages } = usePagination(sorted as unknown as typeof allFiltered, 15);
 
   // Modal options
   const mSubjectOpts = store.subjects.filter((s) => !mExam || s.examId === mExam);
@@ -37,7 +38,6 @@ export function ChaptersManager() {
   const changeFilterExam = (v: string) => { setFE(v); setFS(""); };
 
   const openAdd = () => {
-    // Pre-seed modal exam/subject from active filters if set
     const subject = filterSubject ? store.subjects.find((s) => s.id === filterSubject) : null;
     const exam    = subject ? store.exams.find((e) => e.id === subject.examId) : null;
     setMExam(exam?.id ?? filterExam ?? "");
@@ -124,11 +124,11 @@ export function ChaptersManager() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-[var(--border)] text-[var(--muted-foreground)] text-xs uppercase tracking-wider">
-              <th className="px-5 py-3 text-left">Chapter</th>
-              <th className="px-5 py-3 text-left">Exam / Subject</th>
-              <th className="px-5 py-3 text-right">Topics</th>
-              <th className="px-5 py-3 text-right">Tricks</th>
-              <th className="px-5 py-3 text-right">Notes</th>
+              <Th field="name"        label="Chapter"      sortField={sortField} sortDir={sortDir} onToggle={toggle} />
+              <th className="px-5 py-3 text-left text-[var(--muted-foreground)] text-xs uppercase tracking-wider">Exam / Subject</th>
+              <th className="px-5 py-3 text-right text-[var(--muted-foreground)] text-xs uppercase tracking-wider">Topics</th>
+              <th className="px-5 py-3 text-right text-[var(--muted-foreground)] text-xs uppercase tracking-wider">Tricks</th>
+              <th className="px-5 py-3 text-right text-[var(--muted-foreground)] text-xs uppercase tracking-wider">Notes</th>
               <th className="px-5 py-3" />
             </tr>
           </thead>

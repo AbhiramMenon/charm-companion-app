@@ -65,8 +65,14 @@ export function BillingScreen({
 
   const getExamPrice = (examId: string, d: Duration): number => {
     const p = pricing.find((x) => x.exam_id === examId);
-    if (!p) return d === "monthly" ? EXAM_MONTHLY : d === "sixmonths" ? EXAM_SIXMONTHS : EXAM_YEARLY;
-    return p[d];
+    const base = p ? p[d] : (d === "monthly" ? EXAM_MONTHLY : d === "sixmonths" ? EXAM_SIXMONTHS : EXAM_YEARLY);
+    const pct = (p as any)?.discount_percent ?? 0;
+    return pct > 0 ? Math.round(base * (1 - pct / 100)) : base;
+  };
+
+  const getExamOriginalPrice = (examId: string, d: Duration): number => {
+    const p = pricing.find((x) => x.exam_id === examId);
+    return p ? p[d] : (d === "monthly" ? EXAM_MONTHLY : d === "sixmonths" ? EXAM_SIXMONTHS : EXAM_YEARLY);
   };
 
   let baseAmount: number;
@@ -230,12 +236,20 @@ export function BillingScreen({
       {/* Order summary */}
       <div className="mx-5 mt-4 rounded-2xl border border-border bg-surface p-4 space-y-2.5">
         <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Order Summary</p>
-        {!isPlan && (billingType as ExamBillingProps).examIds.map((id, i) => (
-          <div key={id} className="flex justify-between text-sm">
-            <span className="text-foreground">{selectedExamNames[i] ?? id}</span>
-            <span className="text-foreground">₹{getExamPrice(id, duration).toLocaleString("en-IN")}</span>
-          </div>
-        ))}
+        {!isPlan && (billingType as ExamBillingProps).examIds.map((id, i) => {
+          const discounted = getExamPrice(id, duration);
+          const original = getExamOriginalPrice(id, duration);
+          const hasDiscount = discounted < original;
+          return (
+            <div key={id} className="flex justify-between text-sm">
+              <span className="text-foreground">{selectedExamNames[i] ?? id}</span>
+              <span className="flex items-center gap-1.5">
+                {hasDiscount && <span className="text-[11px] text-muted-foreground line-through">₹{original.toLocaleString("en-IN")}</span>}
+                <span className={hasDiscount ? "font-bold text-emerald-400" : "text-foreground"}>₹{discounted.toLocaleString("en-IN")}</span>
+              </span>
+            </div>
+          );
+        })}
         {isPlan && (
           <div className="flex justify-between text-sm">
             <span className="text-foreground">{label} ({duration})</span>
