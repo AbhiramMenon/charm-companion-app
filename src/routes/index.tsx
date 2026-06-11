@@ -245,11 +245,8 @@ function KrackItApp() {
   const isNative = !!(window as any).Capacitor?.isNativePlatform?.();
   const [showRecordingWarning, setShowRecordingWarning] = useState(false);
   useEffect(() => {
-    const root = document.getElementById("root") ?? document.body;
-    root.style.userSelect = "none";
-    (root.style as CSSStyleDeclaration & { webkitUserSelect: string }).webkitUserSelect = "none";
     const style = document.createElement("style");
-    style.textContent = "@media print { body { display: none !important; } } * { -webkit-tap-highlight-color: transparent; }";
+    style.textContent = "@media print { body { display: none !important; } }";
     document.head.appendChild(style);
 
     if (isNative) {

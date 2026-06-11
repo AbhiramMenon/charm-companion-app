@@ -185,14 +185,18 @@ html, body {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Disable text selection everywhere except inputs */
-* {
+/* Disable text selection on non-interactive elements.
+   Must use 'body' not '*' — wildcard blocks Android keyboard on inputs */
+body {
   -webkit-user-select: none;
   user-select: none;
 }
-input, textarea, [contenteditable="true"] {
-  -webkit-user-select: text;
-  user-select: text;
+
+/* 'auto' (not 'text') correctly resets keyboard invocation in Android WebView */
+input, textarea, [contenteditable] {
+  -webkit-user-select: auto;
+  user-select: auto;
+  touch-action: manipulation;
 }
 
 /* Safe area insets for notched / punch-hole phones.
