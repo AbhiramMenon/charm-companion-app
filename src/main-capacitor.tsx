@@ -25,6 +25,42 @@ declare module "@tanstack/react-router" {
   }
 }
 
+async function initNative() {
+  const isNative = !!(window as any).Capacitor?.isNativePlatform?.();
+  if (!isNative) return;
+
+  try {
+    const { StatusBar, Style } = await import("@capacitor/status-bar");
+    await StatusBar.setStyle({ style: Style.Dark });
+    await StatusBar.setBackgroundColor({ color: "#0a0a0a" });
+  } catch (_) { /* not available on all devices */ }
+
+  try {
+    const { App } = await import("@capacitor/app");
+
+    // Handle Android hardware back button
+    App.addListener("backButton", ({ canGoBack }) => {
+      if (window.history.length > 1 && canGoBack) {
+        window.history.back();
+      } else {
+        App.exitApp();
+      }
+    });
+
+    // Refresh Supabase session when app comes back to foreground
+    App.addListener("appStateChange", async ({ isActive }) => {
+      if (isActive) {
+        try {
+          const { supabase } = await import("./lib/supabase");
+          await supabase.auth.getSession();
+        } catch (_) { /* silent */ }
+      }
+    });
+  } catch (_) { /* not available */ }
+}
+
+initNative();
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <RouterProvider router={router} context={{ queryClient }} />

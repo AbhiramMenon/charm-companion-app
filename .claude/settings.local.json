@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node_modules/.bin/vite dev *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173/)",
+      "Bash(curl -s -o /dev/null -w \"HTTP_STATUS:%{http_code}\" http://localhost:8084/)",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\" http://localhost:8084/)",
+      "Bash(node_modules/.bin/tsc --noEmit)",
+      "Bash(curl -s -o /dev/null -w \"Admin HTTP %{http_code}\" http://localhost:5200/)",
+      "PowerShell(Start-Process \"http://localhost:5200\")",
+      "Bash(node -e \"require\\('xlsx'\\); console.log\\('xlsx ok'\\)\")",
+      "Bash(node_modules/.bin/vite build *)",
+      "Bash(npx tsc *)",
+      "Skill(run)",
+      "Skill(run:*)",
+      "Bash(npm run *)",
+      "Bash(Start-Sleep -Seconds 5)",
+      "Bash(Invoke-WebRequest -Uri \"http://localhost:5200\" -UseBasicParsing -TimeoutSec 5)",
+      "Bash(Select-Object -ExpandProperty StatusCode)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5200/)"
+    ]
+  }
+}
