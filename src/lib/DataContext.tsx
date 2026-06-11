@@ -160,15 +160,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    // On Android, keyboard open/close fires visibilitychange — skip this
-    // listener in native context to prevent mid-typing full re-renders
-    const isNative = !!(window as any).Capacitor?.isNativePlatform?.();
-    if (!isNative) {
-      const handleVisibility = () => {
-        if (!document.hidden) refreshTricksOfDay();
-      };
-      document.addEventListener('visibilitychange', handleVisibility);
-    }
+    const handleVisibility = () => {
+      if (!document.hidden) refreshTricksOfDay();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
 
     const { data: { subscription } } = mobileAuth.onAuthChange(async (event) => {
       if (event === 'SIGNED_IN') loadData();
@@ -178,6 +173,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       subscription.unsubscribe();
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      document.removeEventListener('visibilitychange', handleVisibility);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

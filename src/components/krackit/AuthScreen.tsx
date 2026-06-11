@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ArrowLeft, CheckCircle2, Eye, EyeOff, Mail } from "lucide-react";
 import { KrackItLogo, KrackItWordmark } from "./KrackItLogo";
 import { cn } from "@/lib/utils";
@@ -10,12 +10,22 @@ import {
 import { mobileAuth } from "@/lib/mobileApi";
 import { setSignupInProgress } from "@/lib/authFlag";
 
+// Uncontrolled input field — React never writes value back to DOM after mount.
+// This is critical on Android WebView: controlled inputs (value + onChange) cause
+// React to write input.value at the same moment the IME claims InputConnection,
+// which deadlocks the WebView renderer thread and freezes the entire app.
 function Field({
-  label, type, value, onChange, placeholder, error, right,
+  label, type, placeholder, error, right, inputMode, autoComplete, inputRef, onInput,
 }: {
-  label: string; type: string; value: string;
-  onChange: (v: string) => void; placeholder: string;
-  error?: string; right?: React.ReactNode;
+  label: string;
+  type: string;
+  placeholder: string;
+  error?: string;
+  right?: React.ReactNode;
+  inputMode?: React.InputHTMLAttributes<HTMLInputElement>["inputMode"];
+  autoComplete?: string;
+  inputRef?: React.RefObject<HTMLInputElement | null>;
+  onInput?: (value: string) => void;
 }) {
   return (
     <div>
@@ -24,14 +34,15 @@ function Field({
       </label>
       <div className="relative">
         <input
+          ref={inputRef}
           type={type}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          autoComplete={type === "password" ? "current-password" : undefined}
+          autoComplete={autoComplete}
+          inputMode={inputMode}
           maxLength={120}
+          onInput={onInput ? (e) => onInput((e.target as HTMLInputElement).value) : undefined}
           className={cn(
-            "w-full rounded-xl border bg-surface px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 transition-colors",
+            "w-full rounded-xl border bg-surface px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1",
             error
               ? "border-destructive/60 focus:border-destructive focus:ring-destructive/30"
               : "border-border focus:border-gold/50 focus:ring-gold/30",
@@ -48,18 +59,21 @@ function Field({
 }
 
 function ForgotPasswordView({ onBack }: { onBack: () => void }) {
-  const [email, setEmail]       = useState("");
+  const emailRef = useRef<HTMLInputElement>(null);
   const [error, setError]       = useState("");
   const [loading, setLoading]   = useState(false);
   const [sent, setSent]         = useState(false);
+  const [sentEmail, setSentEmail] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const email = emailRef.current?.value ?? "";
     if (!isValidEmail(email)) { setError("Enter a valid email address."); return; }
     setError("");
     setLoading(true);
     try {
       await mobileAuth.resetPassword(email);
+      setSentEmail(email);
       setSent(true);
     } catch (err: any) {
       setError(err.message ?? "Failed to send reset link.");
@@ -78,7 +92,7 @@ function ForgotPasswordView({ onBack }: { onBack: () => void }) {
           <h2 className="text-lg font-bold text-foreground">Check your inbox</h2>
           <p className="mt-1 text-sm text-muted-foreground leading-relaxed">
             We've sent a password reset link to<br />
-            <span className="font-semibold text-foreground">{email}</span>
+            <span className="font-semibold text-foreground">{sentEmail}</span>
           </p>
         </div>
         <p className="text-xs text-muted-foreground">Didn't receive it? Check your spam folder or try again.</p>
@@ -91,7 +105,7 @@ function ForgotPasswordView({ onBack }: { onBack: () => void }) {
 
   return (
     <div className="space-y-5">
-      <button onClick={onBack} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+      <button onClick={onBack} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeft className="h-4 w-4" /> Back to Sign In
       </button>
       <div>
@@ -104,11 +118,12 @@ function ForgotPasswordView({ onBack }: { onBack: () => void }) {
       <form onSubmit={handleSubmit} className="space-y-4" noValidate>
         <Field
           label="Email address"
-          type="email"
-          value={email}
-          onChange={setEmail}
+          type="text"
+          inputMode="email"
+          autoComplete="email"
           placeholder="you@example.com"
           error={error}
+          inputRef={emailRef}
         />
         <button
           type="submit"
@@ -126,34 +141,51 @@ export function AuthScreen({ onAuth, onSignupStart }: { onAuth: (name: string, e
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [showForgotPw, setShowForgotPw] = useState(false);
   const [signUpDone, setSignUpDone] = useState(false);
-  const [name, setName]       = useState("");
-  const [email, setEmail]     = useState("");
-  const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [errors, setErrors]   = useState<Record<string, string>>({});
   const [globalError, setGlobalError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const pwStr = passwordStrength(password);
+  // Uncontrolled refs — read on submit, never written back to DOM
+  const nameRef     = useRef<HTMLInputElement>(null);
+  const emailRef    = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
 
-  const validate = () => {
-    const errs: Record<string, string> = {};
-    if (mode === "signup" && sanitize(name).length < 2)
-      errs.name = "Full name must be at least 2 characters.";
-    if (!isValidEmail(email))
-      errs.email = "Enter a valid email address.";
-    if (password.length < 6)
-      errs.password = "Password must be at least 6 characters.";
-    if (mode === "signup" && pwStr.score < 2)
-      errs.password = "Please choose a stronger password.";
-    return errs;
+  // Password strength display — updated via onInput, not via controlled state
+  const [pwStr, setPwStr] = useState({ score: 0, label: "", color: "" });
+
+  const handlePasswordInput = (value: string) => {
+    if (mode === "signup") setPwStr(passwordStrength(value));
+  };
+
+  const switchMode = (m: "signin" | "signup") => {
+    setMode(m);
+    setErrors({});
+    setGlobalError("");
+    setSignUpDone(false);
+    // Clear password and strength when switching modes
+    if (passwordRef.current) passwordRef.current.value = "";
+    setPwStr({ score: 0, label: "", color: "" });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setGlobalError("");
 
-    const errs = validate();
+    const nameVal     = sanitize(nameRef.current?.value ?? "");
+    const emailVal    = sanitize(emailRef.current?.value ?? "").toLowerCase();
+    const passwordVal = passwordRef.current?.value ?? "";
+
+    const errs: Record<string, string> = {};
+    if (mode === "signup" && nameVal.length < 2)
+      errs.name = "Full name must be at least 2 characters.";
+    if (!isValidEmail(emailVal))
+      errs.email = "Enter a valid email address.";
+    if (passwordVal.length < 6)
+      errs.password = "Password must be at least 6 characters.";
+    if (mode === "signup" && pwStr.score < 2)
+      errs.password = "Please choose a stronger password.";
+
     if (Object.keys(errs).length) { setErrors(errs); return; }
     setErrors({});
     setLoading(true);
@@ -163,20 +195,17 @@ export function AuthScreen({ onAuth, onSignupStart }: { onAuth: (name: string, e
         onSignupStart?.();
         setSignupInProgress(true);
         try {
-          await mobileAuth.signUp(sanitize(email).toLowerCase(), password, sanitize(name));
+          await mobileAuth.signUp(emailVal, passwordVal, nameVal);
           await mobileAuth.signOut().catch(() => {});
         } finally {
           setSignupInProgress(false);
         }
         setSignUpDone(true);
-        setMode("signin");
-        setName("");
-        setPassword("");
-        setErrors({});
+        switchMode("signin");
+        if (emailRef.current) emailRef.current.value = emailVal; // keep email pre-filled
       } else {
-        await mobileAuth.signIn(sanitize(email).toLowerCase(), password);
-        // Pass empty name — onAuthStateChange loads the real name from user_profiles or auth metadata
-        onAuth("", sanitize(email).toLowerCase());
+        await mobileAuth.signIn(emailVal, passwordVal);
+        onAuth("", emailVal);
       }
     } catch (err: any) {
       setGlobalError(err.message ?? "Authentication failed. Please try again.");
@@ -188,9 +217,7 @@ export function AuthScreen({ onAuth, onSignupStart }: { onAuth: (name: string, e
   return (
     <div className="flex flex-1 flex-col overflow-y-auto bg-background px-6 pb-10 pt-10">
       {showForgotPw ? (
-        <>
-          <ForgotPasswordView onBack={() => setShowForgotPw(false)} />
-        </>
+        <ForgotPasswordView onBack={() => setShowForgotPw(false)} />
       ) : (<>
       {/* Logo + branding */}
       <div className="mb-8 flex flex-col items-center gap-4">
@@ -214,9 +241,9 @@ export function AuthScreen({ onAuth, onSignupStart }: { onAuth: (name: string, e
         {(["signin", "signup"] as const).map((m) => (
           <button
             key={m}
-            onClick={() => { setMode(m); setErrors({}); setGlobalError(""); setSignUpDone(false); }}
+            onClick={() => switchMode(m)}
             className={cn(
-              "flex-1 rounded-xl py-2.5 text-sm font-semibold transition-all",
+              "flex-1 rounded-xl py-2.5 text-sm font-semibold",
               mode === m
                 ? "gold-gradient text-[#1a1410] shadow-md"
                 : "text-muted-foreground hover:text-foreground"
@@ -232,27 +259,31 @@ export function AuthScreen({ onAuth, onSignupStart }: { onAuth: (name: string, e
           <Field
             label="Full Name"
             type="text"
-            value={name}
-            onChange={setName}
+            inputMode="text"
+            autoComplete="name"
             placeholder="Aarav Singh"
             error={errors.name}
+            inputRef={nameRef}
           />
         )}
         <Field
           label="Email"
-          type="email"
-          value={email}
-          onChange={setEmail}
+          type="text"
+          inputMode="email"
+          autoComplete="email"
           placeholder="you@example.com"
           error={errors.email}
+          inputRef={emailRef}
         />
         <Field
           label="Password"
           type={showPass ? "text" : "password"}
-          value={password}
-          onChange={setPassword}
+          inputMode="text"
+          autoComplete={mode === "signup" ? "new-password" : "current-password"}
           placeholder={mode === "signup" ? "Min 6 chars, use numbers & symbols" : "Your password"}
           error={errors.password}
+          inputRef={passwordRef}
+          onInput={handlePasswordInput}
           right={
             <button type="button" onClick={() => setShowPass(!showPass)} className="text-muted-foreground">
               {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -261,14 +292,14 @@ export function AuthScreen({ onAuth, onSignupStart }: { onAuth: (name: string, e
         />
 
         {/* Password strength bar (signup only) */}
-        {mode === "signup" && password.length > 0 && (
+        {mode === "signup" && pwStr.score > 0 && (
           <div>
             <div className="flex gap-1 mb-1">
               {[0, 1, 2, 3].map((i) => (
                 <div
                   key={i}
                   className={cn(
-                    "h-1 flex-1 rounded-full transition-colors",
+                    "h-1 flex-1 rounded-full",
                     i < pwStr.score ? pwStr.color : "bg-border"
                   )}
                 />
@@ -302,12 +333,12 @@ export function AuthScreen({ onAuth, onSignupStart }: { onAuth: (name: string, e
         <button
           type="submit"
           disabled={loading}
-          className="mt-2 w-full rounded-2xl gold-gradient py-3.5 text-sm font-bold text-[#1a1410] shadow-lg shadow-gold/20 transition-transform active:scale-[0.98] disabled:opacity-60"
+          className="mt-2 w-full rounded-2xl gold-gradient py-3.5 text-sm font-bold text-[#1a1410] shadow-lg shadow-gold/20 active:scale-[0.98] disabled:opacity-60"
         >
           {loading
             ? "Please wait…"
             : mode === "signin"
-              ? "Sign In to KrackIt"
+              ? "Sign In to KrackIT"
               : "Create My Account"}
         </button>
       </form>
@@ -322,7 +353,7 @@ export function AuthScreen({ onAuth, onSignupStart }: { onAuth: (name: string, e
       {/* Social sign-in */}
       <button
         onClick={() => mobileAuth.signInWithGoogle().catch((e) => setGlobalError(e.message))}
-        className="flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-surface py-3 text-sm font-medium text-foreground transition-colors hover:border-gold/30 active:scale-[0.98]"
+        className="flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-surface py-3 text-sm font-medium text-foreground hover:border-gold/30 active:scale-[0.98]"
       >
         <svg className="h-4 w-4" viewBox="0 0 24 24">
           <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>

@@ -239,19 +239,13 @@ function KrackItApp() {
     document.documentElement.setAttribute("data-theme", "dark");
   }, []);
 
-  // Screenshot / screen-record deterrence (web only — disabled in native app
-  // because Android fires visibilitychange when the keyboard opens, causing the
-  // app to blur itself and lose input focus on every keystroke)
-  const isNative = !!(window as any).Capacitor?.isNativePlatform?.();
+  // Screenshot / screen-record deterrence
   const [showRecordingWarning, setShowRecordingWarning] = useState(false);
   useEffect(() => {
+    const root = document.documentElement;
     const style = document.createElement("style");
     style.textContent = "@media print { body { display: none !important; } }";
     document.head.appendChild(style);
-
-    if (isNative) {
-      return () => { document.head.removeChild(style); };
-    }
 
     const onVisibility = () => {
       if (document.hidden) {
@@ -267,7 +261,7 @@ function KrackItApp() {
       document.removeEventListener("visibilitychange", onVisibility);
       document.head.removeChild(style);
     };
-  }, [isNative]);
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => setBooting(false), 1600);
